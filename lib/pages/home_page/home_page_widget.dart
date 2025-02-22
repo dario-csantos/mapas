@@ -90,15 +90,15 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 children: [
                   Container(
                     width: double.infinity,
-                    height: 700.0,
+                    height: 720.0,
                     child: custom_widgets.GoogleMapsLiveRoute(
                       width: double.infinity,
-                      height: 700.0,
-                      updateIntervalSeconds: 2,
+                      height: 720.0,
+                      updateIntervalSeconds: 1,
                       minDistanceFilter: 3.0,
-                      routeColor: FlutterFlowTheme.of(context).error,
+                      routeColor: FlutterFlowTheme.of(context).tertiary,
                       showSpeed: true,
-                      initialZoom: 14.0,
+                      initialZoom: 15.0,
                       initialLocation: currentUserLocationValue,
                     ),
                   ),
