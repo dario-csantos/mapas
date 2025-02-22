@@ -15,6 +15,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     super.key,
     this.width,
     this.height,
+    this.initialLocation,
     required this.updateIntervalSeconds, // Intervalo de atualização
     required this.minDistanceFilter, // Distância mínima
     required this.routeColor, // Cor da linha
@@ -24,6 +25,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
 
   final double? width;
   final double? height;
+  final LatLng? initialLocation;
   final int updateIntervalSeconds; // Tempo de atualização
   final double minDistanceFilter; // Distância mínima em metros
   final Color routeColor; // Cor da linha da rota
@@ -37,15 +39,13 @@ class GoogleMapsLiveRoute extends StatefulWidget {
 class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   late gmaps.GoogleMapController _mapController;
   Set<gmaps.Polyline> _polylines = {};
-  Set<gmaps.Marker> _markers = {};
+  Set<gmaps.Marker> _markers = {}; // Ícone de posição
   List<gmaps.LatLng> _routePoints = [];
   StreamSubscription<Position>? _positionStream;
   Timer? _updateTimer;
-  gmaps.LatLng? _lastValidPosition;
-  double _currentSpeed = 0.0;
-  gmaps.LatLng? _currentPosition;
-  double _currentHeading = 0.0;
-  double _currentZoom = 16.0; // Mantém o zoom do usuário
+  gmaps.LatLng? _lastValidPosition; // Última posição válida
+  double _currentSpeed = 0.0; // Velocidade do usuário em km/h
+  gmaps.LatLng? _currentPosition; // Posição inicial
 
   @override
   void initState() {
@@ -60,12 +60,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.dispose();
   }
 
-  /// Obtém a posição inicial e configura a câmera no mapa
+  /// Obtém a posição inicial do usuário e define no mapa
   Future<void> _getInitialPosition() async {
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best);
+    if (widget.initialLocation == null) return;
+
     setState(() {
-      _currentPosition = gmaps.LatLng(position.latitude, position.longitude);
+      _currentPosition = gmaps.LatLng(
+          widget.initialLocation!.latitude, widget.initialLocation!.longitude);
     });
 
     _mapController.animateCamera(
@@ -78,7 +79,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     );
   }
 
-  /// Inicia o rastreamento da localização do usuário
+  /// Inicia o rastreamento da localização do usuário com atualização baseada em tempo e distância
   Future<void> _startTracking() async {
     LocationPermission permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied ||
@@ -87,8 +88,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       return;
     }
 
+    // Obtém a posição inicial do usuário e configura no mapa
     await _getInitialPosition();
 
+    // Inicia o rastreamento contínuo
     _positionStream = Geolocator.getPositionStream(
       locationSettings: LocationSettings(
         accuracy: LocationAccuracy.best,
@@ -98,6 +101,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _updateUserLocation(newPosition);
     });
 
+    // Atualiza por tempo também
     _updateTimer = Timer.periodic(
         Duration(seconds: widget.updateIntervalSeconds), (timer) async {
       Position newPosition = await Geolocator.getCurrentPosition(
@@ -106,31 +110,49 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// Atualiza a posição do usuário, velocidade e faz o mapa girar
-  void _updateUserLocation(Position position) async {
+  /// Atualiza a posição do usuário, velocidade e desenha a linha do trajeto
+  void _updateUserLocation(Position position) {
     final gmaps.LatLng newPosition =
         gmaps.LatLng(position.latitude, position.longitude);
 
+    // Calcula a velocidade (conversão de m/s para km/h)
     double speedKmH = position.speed * 3.6;
+
+    // Se o GPS não fornecer velocidade, usa 0 km/h como fallback
     if (speedKmH.isNaN || speedKmH < 0) {
       speedKmH = 0.0;
     }
 
-    double heading = position.heading;
-    if (heading.isNaN || heading < 0) {
-      heading = _currentHeading;
-    }
-
-    if (_mapController != null) {
-      _currentZoom = await _mapController!.getZoomLevel();
-    }
+    // Debugging: Mostra a velocidade no console
+    print(
+        "📍 Nova posição: $newPosition, Velocidade: ${speedKmH.toStringAsFixed(1)} km/h");
 
     setState(() {
       _currentSpeed = speedKmH;
-      _currentHeading = heading;
-      _routePoints.add(newPosition);
-      _lastValidPosition = newPosition;
+    });
 
+    // Se já existe uma última posição válida, verificamos a distância
+    if (_lastValidPosition != null) {
+      double distance = Geolocator.distanceBetween(
+        _lastValidPosition!.latitude,
+        _lastValidPosition!.longitude,
+        newPosition.latitude,
+        newPosition.longitude,
+      );
+
+      // Se a distância for menor que o mínimo definido pelo usuário, ignora a atualização
+      if (distance < widget.minDistanceFilter) {
+        return;
+      }
+    }
+
+    // Atualiza a última posição válida
+    _lastValidPosition = newPosition;
+
+    setState(() {
+      _routePoints.add(newPosition);
+
+      // Atualiza o marcador da posição do usuário
       _markers = {
         gmaps.Marker(
           markerId: const gmaps.MarkerId("user_position"),
@@ -140,25 +162,19 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         ),
       };
 
+      // Atualiza a linha do trajeto com a cor escolhida pelo usuário
       _polylines = {
         gmaps.Polyline(
           polylineId: const gmaps.PolylineId("tracking_route"),
           points: _routePoints,
           color: widget.routeColor,
           width: 5,
-        ),
+        )
       };
     });
 
-    _mapController!.animateCamera(
-      gmaps.CameraUpdate.newCameraPosition(
-        gmaps.CameraPosition(
-          target: newPosition,
-          zoom: _currentZoom, // Mantém o zoom do usuário
-          bearing: _currentHeading, // Gira o mapa na direção do usuário
-        ),
-      ),
-    );
+    // Move a câmera para a nova posição do usuário
+    _mapController.animateCamera(gmaps.CameraUpdate.newLatLng(newPosition));
   }
 
   @override
