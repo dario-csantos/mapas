@@ -39,7 +39,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
 class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   late gmaps.GoogleMapController _mapController;
   Set<gmaps.Polyline> _polylines = {};
-  Set<gmaps.Marker> _markers = {}; // Ícone de posição
+  Set<gmaps.Marker> _markers = {}; // Adicionado para exibir o ícone de posição
   List<gmaps.LatLng> _routePoints = [];
   StreamSubscription<Position>? _positionStream;
   Timer? _updateTimer;
@@ -84,7 +84,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     LocationPermission permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      print("❌ Permissão negada. Não será possível rastrear o trajeto.");
+      print("Permissão negada. Não será possível rastrear o trajeto.");
       return;
     }
 
@@ -118,17 +118,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     // Calcula a velocidade (conversão de m/s para km/h)
     double speedKmH = position.speed * 3.6;
 
-    // Se o GPS não fornecer velocidade, usa 0 km/h como fallback
-    if (speedKmH.isNaN || speedKmH < 0) {
-      speedKmH = 0.0;
-    }
-
-    // Debugging: Mostra a velocidade no console
-    print(
-        "📍 Nova posição: $newPosition, Velocidade: ${speedKmH.toStringAsFixed(1)} km/h");
-
     setState(() {
-      _currentSpeed = speedKmH;
+      _currentSpeed = speedKmH; // Atualiza a velocidade atual
     });
 
     // Se já existe uma última posição válida, verificamos a distância
@@ -209,8 +200,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             trafficEnabled: false,
           ),
         ),
-
-        // Exibição da velocidade corrigida
         if (widget.showSpeed)
           Positioned(
             top: 20,
