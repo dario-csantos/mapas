@@ -46,7 +46,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
         key: scaffoldKey,
         backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
         appBar: AppBar(
-          backgroundColor: FlutterFlowTheme.of(context).tertiary,
+          backgroundColor: FlutterFlowTheme.of(context).success,
           automaticallyImplyLeading: false,
           title: Text(
             'GPS MCBDA',
@@ -70,11 +70,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 children: [
                   Container(
                     width: double.infinity,
-                    height: 500.0,
+                    height: 700.0,
                     child: custom_widgets.GoogleMapsLiveRoute(
                       width: double.infinity,
-                      height: 500.0,
-                      updateIntervalSeconds: 2,
+                      height: 700.0,
+                      updateIntervalSeconds: 1,
+                      minDistanceFilter: 3.0,
                       routeColor: FlutterFlowTheme.of(context).error,
                       showSpeed: true,
                       initialZoom: 14.0,
