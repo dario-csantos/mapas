@@ -1,7 +1,9 @@
 // Automatic FlutterFlow imports
+import '/backend/supabase/supabase.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import 'index.dart'; // Imports other custom widgets
+import '/flutter_flow/custom_functions.dart'; // Imports custom functions
 import 'package:flutter/material.dart';
 // Begin custom widget code
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
@@ -15,39 +17,49 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     super.key,
     this.width,
     this.height,
-    required this.updateIntervalSeconds, // Intervalo de atualização
-    required this.minDistanceFilter, // Distância mínima
-    required this.routeColor, // Cor da linha
-    required this.showSpeed, // Exibir velocidade
-    required this.initialZoom, // Zoom inicial
+    required this.initialLocation, // Posição inicial do usuário (parâmetro)
+    required this.updateIntervalSeconds,
+    required this.minDistanceFilter,
+    required this.routeColor,
+    required this.showSpeed,
+    required this.initialZoom,
+    required this.showMarkers,
+    required this.markerType,
+    this.markerLocations = const [],
   });
 
   final double? width;
   final double? height;
+  final LatLng initialLocation;
   final int updateIntervalSeconds;
   final double minDistanceFilter;
   final Color routeColor;
   final bool showSpeed;
   final double initialZoom;
+  final bool showMarkers;
+  final String markerType; // "Single" ou "Multiple"
+  final List<LatLng> markerLocations;
 
   @override
   State<GoogleMapsLiveRoute> createState() => _GoogleMapsLiveRouteState();
 }
 
 class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
-  late gmaps.GoogleMapController _mapController;
+  gmaps.GoogleMapController? _mapController;
   Set<gmaps.Polyline> _polylines = {};
   Set<gmaps.Marker> _markers = {};
   List<gmaps.LatLng> _routePoints = [];
   StreamSubscription<Position>? _positionStream;
   Timer? _updateTimer;
-  gmaps.LatLng? _lastValidPosition;
-  double _currentSpeed = 0.0;
   gmaps.LatLng? _currentPosition;
+  double _currentSpeed = 0.0;
+  double _currentHeading = 0.0;
+  double _currentZoom = 16.0;
 
   @override
   void initState() {
     super.initState();
+    _getInitialPosition();
     _startTracking();
   }
 
@@ -58,32 +70,35 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.dispose();
   }
 
+  /// Obtém a posição inicial com base no parâmetro `initialLocation`
   Future<void> _getInitialPosition() async {
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best);
     setState(() {
-      _currentPosition = gmaps.LatLng(position.latitude, position.longitude);
+      _currentPosition = gmaps.LatLng(
+          widget.initialLocation.latitude, widget.initialLocation.longitude);
     });
 
-    _mapController.animateCamera(
-      gmaps.CameraUpdate.newCameraPosition(
-        gmaps.CameraPosition(
-          target: _currentPosition!,
-          zoom: widget.initialZoom,
-        ),
-      ),
-    );
+    Future.delayed(Duration(milliseconds: 500), () {
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          gmaps.CameraUpdate.newCameraPosition(
+            gmaps.CameraPosition(
+              target: _currentPosition!,
+              zoom: widget.initialZoom,
+            ),
+          ),
+        );
+      }
+    });
   }
 
+  /// Inicia o rastreamento da localização do usuário
   Future<void> _startTracking() async {
     LocationPermission permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      print("Permissão negada. Não será possível rastrear o trajeto.");
+      print("❌ Permissão negada.");
       return;
     }
-
-    await _getInitialPosition();
 
     _positionStream = Geolocator.getPositionStream(
       locationSettings: LocationSettings(
@@ -102,33 +117,30 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  void _updateUserLocation(Position position) {
+  /// Atualiza a posição do usuário, velocidade e mantém o zoom personalizado
+  void _updateUserLocation(Position position) async {
     final gmaps.LatLng newPosition =
         gmaps.LatLng(position.latitude, position.longitude);
+
     double speedKmH = position.speed * 3.6;
+    if (speedKmH.isNaN || speedKmH < 0) {
+      speedKmH = 0.0;
+    }
+
     double heading = position.heading;
+    if (heading.isNaN || heading < 0) {
+      heading = _currentHeading;
+    }
+
+    if (_mapController != null) {
+      _currentZoom = await _mapController!.getZoomLevel();
+    }
 
     setState(() {
       _currentSpeed = speedKmH;
-    });
-
-    if (_lastValidPosition != null) {
-      double distance = Geolocator.distanceBetween(
-        _lastValidPosition!.latitude,
-        _lastValidPosition!.longitude,
-        newPosition.latitude,
-        newPosition.longitude,
-      );
-
-      if (distance < widget.minDistanceFilter) {
-        return;
-      }
-    }
-
-    _lastValidPosition = newPosition;
-
-    setState(() {
+      _currentHeading = heading;
       _routePoints.add(newPosition);
+
       _markers = {
         gmaps.Marker(
           markerId: const gmaps.MarkerId("user_position"),
@@ -137,25 +149,46 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               gmaps.BitmapDescriptor.hueBlue),
         ),
       };
+
       _polylines = {
         gmaps.Polyline(
           polylineId: const gmaps.PolylineId("tracking_route"),
           points: _routePoints,
           color: widget.routeColor,
           width: 5,
-        )
+        ),
       };
     });
 
-    _mapController.animateCamera(
+    _mapController!.animateCamera(
       gmaps.CameraUpdate.newCameraPosition(
         gmaps.CameraPosition(
           target: newPosition,
-          zoom: widget.initialZoom,
-          bearing: heading, // Gira o mapa conforme a direção do usuário
+          zoom: _currentZoom,
+          bearing: _currentHeading,
         ),
       ),
     );
+  }
+
+  /// Adiciona os marcadores ao mapa
+  Set<gmaps.Marker> _buildMarkers() {
+    if (!widget.showMarkers) return {};
+    if (widget.markerType == "Single" && widget.markerLocations.isNotEmpty) {
+      return {
+        gmaps.Marker(
+          markerId: const gmaps.MarkerId("single_marker"),
+          position: gmaps.LatLng(widget.markerLocations.first.latitude,
+              widget.markerLocations.first.longitude),
+        )
+      };
+    }
+    return widget.markerLocations
+        .map((location) => gmaps.Marker(
+              markerId: gmaps.MarkerId(location.toString()),
+              position: gmaps.LatLng(location.latitude, location.longitude),
+            ))
+        .toSet();
   }
 
   @override
@@ -169,27 +202,32 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             onMapCreated: (controller) {
               _mapController = controller;
               if (_currentPosition != null) {
-                _mapController.animateCamera(
-                  gmaps.CameraUpdate.newCameraPosition(
-                    gmaps.CameraPosition(
-                      target: _currentPosition!,
-                      zoom: widget.initialZoom,
+                Future.delayed(Duration(milliseconds: 500), () {
+                  _mapController!.animateCamera(
+                    gmaps.CameraUpdate.newCameraPosition(
+                      gmaps.CameraPosition(
+                        target: _currentPosition!,
+                        zoom: widget.initialZoom,
+                        bearing: _currentHeading,
+                      ),
                     ),
-                  ),
-                );
+                  );
+                });
               }
             },
             initialCameraPosition: gmaps.CameraPosition(
               target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
               zoom: widget.initialZoom,
             ),
-            markers: _markers,
+            markers: _buildMarkers().union(_markers),
             polylines: _polylines,
             myLocationEnabled: false,
             compassEnabled: true,
             trafficEnabled: false,
           ),
         ),
+
+        // Exibição da velocidade
         if (widget.showSpeed)
           Positioned(
             top: 20,

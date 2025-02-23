@@ -1,6 +1,8 @@
+import '/backend/supabase/supabase.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
+import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
@@ -19,12 +21,15 @@ class _HomePageWidgetState extends State<HomePageWidget> {
   late HomePageModel _model;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
+  LatLng? currentUserLocationValue;
 
   @override
   void initState() {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
+    getCurrentUserLocation(defaultLocation: LatLng(0.0, 0.0), cached: true)
+        .then((loc) => safeSetState(() => currentUserLocationValue = loc));
     WidgetsBinding.instance.addPostFrameCallback((_) => safeSetState(() {}));
   }
 
@@ -37,56 +42,107 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        FocusManager.instance.primaryFocus?.unfocus();
-      },
-      child: Scaffold(
-        key: scaffoldKey,
-        backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-        appBar: AppBar(
-          backgroundColor: FlutterFlowTheme.of(context).primary,
-          automaticallyImplyLeading: false,
-          title: Text(
-            'GPS MCBDA',
-            style: FlutterFlowTheme.of(context).headlineMedium.override(
-                  fontFamily: 'Inter Tight',
-                  color: Colors.white,
-                  fontSize: 22.0,
-                  letterSpacing: 0.0,
-                ),
+    if (currentUserLocationValue == null) {
+      return Container(
+        color: FlutterFlowTheme.of(context).primaryBackground,
+        child: Center(
+          child: SizedBox(
+            width: 50.0,
+            height: 50.0,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                FlutterFlowTheme.of(context).primary,
+              ),
+            ),
           ),
-          actions: [],
-          centerTitle: false,
-          elevation: 2.0,
         ),
-        body: SafeArea(
-          top: true,
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: 700.0,
-                    child: custom_widgets.GoogleMapsLiveRoute(
-                      width: double.infinity,
-                      height: 700.0,
-                      updateIntervalSeconds: 2,
-                      minDistanceFilter: 3.0,
-                      routeColor: FlutterFlowTheme.of(context).error,
-                      showSpeed: true,
-                      initialZoom: 14.0,
+      );
+    }
+
+    return FutureBuilder<List<TrakingDriverRow>>(
+      future: TrakingDriverTable().queryRows(
+        queryFn: (q) => q,
+      ),
+      builder: (context, snapshot) {
+        // Customize what your widget looks like when it's loading.
+        if (!snapshot.hasData) {
+          return Scaffold(
+            backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
+            body: Center(
+              child: SizedBox(
+                width: 50.0,
+                height: 50.0,
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    FlutterFlowTheme.of(context).primary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+        List<TrakingDriverRow> homePageTrakingDriverRowList = snapshot.data!;
+
+        return GestureDetector(
+          onTap: () {
+            FocusScope.of(context).unfocus();
+            FocusManager.instance.primaryFocus?.unfocus();
+          },
+          child: Scaffold(
+            key: scaffoldKey,
+            backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
+            appBar: AppBar(
+              backgroundColor: FlutterFlowTheme.of(context).error,
+              automaticallyImplyLeading: false,
+              title: Text(
+                'GPS MCBDA 1.0',
+                style: FlutterFlowTheme.of(context).headlineMedium.override(
+                      fontFamily: 'Inter Tight',
+                      color: Colors.white,
+                      fontSize: 22.0,
+                      letterSpacing: 0.0,
                     ),
+              ),
+              actions: [],
+              centerTitle: false,
+              elevation: 2.0,
+            ),
+            body: SafeArea(
+              top: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  Stack(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        height: 700.0,
+                        child: custom_widgets.GoogleMapsLiveRoute(
+                          width: double.infinity,
+                          height: 700.0,
+                          updateIntervalSeconds: 2,
+                          minDistanceFilter: 3.0,
+                          routeColor: FlutterFlowTheme.of(context).error,
+                          showSpeed: true,
+                          initialZoom: 14.0,
+                          showMarkers: true,
+                          markerType: 'Multiple',
+                          initialLocation: currentUserLocationValue!,
+                          markerLocations: functions.converteStringLatLng(
+                              homePageTrakingDriverRowList
+                                  .map((e) => e.location)
+                                  .withoutNulls
+                                  .toList()),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

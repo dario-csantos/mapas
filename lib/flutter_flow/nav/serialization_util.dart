@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:from_css_color/from_css_color.dart';
 
-import '../../flutter_flow/lat_lng.dart';
+import '/backend/supabase/supabase.dart';
+
 import '../../flutter_flow/place.dart';
 import '../../flutter_flow/uploaded_file.dart';
 
@@ -69,6 +70,9 @@ String? serializeParam(
         data = uploadedFileToString(param as FFUploadedFile);
       case ParamType.JSON:
         data = json.encode(param);
+
+      case ParamType.SupabaseRow:
+        return json.encode((param as SupabaseDataRow).data);
 
       default:
         data = null;
@@ -145,6 +149,8 @@ enum ParamType {
   FFPlace,
   FFUploadedFile,
   JSON,
+
+  SupabaseRow,
 }
 
 dynamic deserializeParam<T>(
@@ -195,6 +201,49 @@ dynamic deserializeParam<T>(
         return uploadedFileFromString(param);
       case ParamType.JSON:
         return json.decode(param);
+
+      case ParamType.SupabaseRow:
+        final data = json.decode(param) as Map<String, dynamic>;
+        switch (T) {
+          case ViewFullPostsRow:
+            return ViewFullPostsRow(data);
+          case ViewTotalLike1Row:
+            return ViewTotalLike1Row(data);
+          case ImagensRow:
+            return ImagensRow(data);
+          case ViewPostsGlobal1Row:
+            return ViewPostsGlobal1Row(data);
+          case PostsRow:
+            return PostsRow(data);
+          case VeiculosRow:
+            return VeiculosRow(data);
+          case FollowsRow:
+            return FollowsRow(data);
+          case ViewPostsComImagensRow:
+            return ViewPostsComImagensRow(data);
+          case PostComentariosRow:
+            return PostComentariosRow(data);
+          case TrakingDriverRow:
+            return TrakingDriverRow(data);
+          case ApriscosRow:
+            return ApriscosRow(data);
+          case LojasRow:
+            return LojasRow(data);
+          case UnidadesRow:
+            return UnidadesRow(data);
+          case SociosRow:
+            return SociosRow(data);
+          case UnidadeGestaoRow:
+            return UnidadeGestaoRow(data);
+          case LikesRow:
+            return LikesRow(data);
+          case ProfissoesRow:
+            return ProfissoesRow(data);
+          case ViewSocios1Row:
+            return ViewSocios1Row(data);
+          default:
+            return null;
+        }
 
       default:
         return null;
