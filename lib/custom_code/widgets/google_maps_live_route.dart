@@ -58,50 +58,50 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   double _currentHeading = 0.0;
   double _currentZoom = 17.0;
 
+  // 🔥 Variável para armazenar o trajeto e enviar ao FlutterFlow
   List<gmaps.LatLng> trajetoPontos = [
-    gmaps.LatLng(37.7749, -122.4194), // San Francisco
-    gmaps.LatLng(40.7128, -74.0060), // Nova York
+    gmaps.LatLng(37.7749, -122.4194), // Exemplo inicial (San Francisco)
+    gmaps.LatLng(40.7128, -74.0060), // Exemplo inicial (Nova York)
   ];
 
-  /// Aplica o estilo ao mapa
+  /// 🔥 Aplica o estilo ao mapa para remover 3D
   void _setMapStyle() async {
     String style = '''
- [
-  {
-    "featureType": "poi",
-    "stylers": [{"visibility": "off"}]
-  },
-  {
-    "featureType": "road",
-    "stylers": [{"color": "#ffffff"}]
-  },
-  {
-    "featureType": "transit",
-    "stylers": [{"visibility": "off"}]
-  },
-  {
-    "featureType": "landscape",
-    "stylers": [{"color": "#f2f2f2"}]
-  },
-  {
-    "featureType": "administrative",
-    "stylers": [{"visibility": "off"}]
-  },
-  {
-    "featureType": "water",
-    "stylers": [{"color": "#c9c9c9"}]
-  },
-  {
-    "featureType": "landscape.man_made",
-    "stylers": [{"visibility": "off"}]
-  },
-  {
-    "featureType": "building",
-    "elementType": "geometry",
-    "stylers": [{"visibility": "off"}]
-  }
-]
-
+    [
+      {
+        "featureType": "poi",
+        "stylers": [{"visibility": "off"}]
+      },
+      {
+        "featureType": "road",
+        "stylers": [{"color": "#ffffff"}]
+      },
+      {
+        "featureType": "transit",
+        "stylers": [{"visibility": "off"}]
+      },
+      {
+        "featureType": "landscape",
+        "stylers": [{"color": "#f2f2f2"}]
+      },
+      {
+        "featureType": "administrative",
+        "stylers": [{"visibility": "off"}]
+      },
+      {
+        "featureType": "water",
+        "stylers": [{"color": "#c9c9c9"}]
+      },
+      {
+        "featureType": "landscape.man_made",
+        "stylers": [{"visibility": "off"}]
+      },
+      {
+        "featureType": "building",
+        "elementType": "geometry",
+        "stylers": [{"visibility": "off"}]
+      }
+    ]
     ''';
 
     _mapController?.setMapStyle(style);
@@ -135,7 +135,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             gmaps.CameraPosition(
               target: _currentPosition!,
               zoom: widget.initialZoom,
-              tilt: 0.0, // Defina para 0.0 para remover inclinação
+              tilt: 0.0, // 🔥 Removendo inclinação 3D
             ),
           ),
         );
@@ -192,7 +192,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentHeading = heading;
       _routePoints.add(newPosition);
 
-      trajetoPontos.add(newPosition); // Adiciona coordenada ao trajeto
+      trajetoPontos.add(newPosition);
 
       // 🔥 Agora converte para string antes de salvar no App State do FlutterFlow
       FFAppState().trajetoPontos = trajetoPontos
@@ -240,53 +240,19 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           child: gmaps.GoogleMap(
             onMapCreated: (controller) {
               _mapController = controller;
-
-              // Aplica o estilo ao mapa
               _setMapStyle();
-
-              if (_currentPosition != null) {
-                Future.delayed(Duration(milliseconds: 500), () {
-                  _mapController!.animateCamera(
-                    gmaps.CameraUpdate.newCameraPosition(
-                      gmaps.CameraPosition(
-                        target: _currentPosition!,
-                        zoom: widget.initialZoom,
-                        bearing: _currentHeading,
-                        tilt: 0.0, // 🔥 Removida inclinação 3D
-                      ),
-                    ),
-                  );
-                });
-              }
             },
             initialCameraPosition: gmaps.CameraPosition(
               target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
               zoom: widget.initialZoom,
-              tilt: 60.0, // 🔥 Remove inclinação 3D na posição inicial
             ),
             markers: _markers,
             polylines: _polylines,
             myLocationEnabled: false,
             compassEnabled: true,
-            trafficEnabled: true, // 🔥 Agora mostra trânsito no mapa
+            trafficEnabled: true,
           ),
         ),
-        if (widget.showSpeed)
-          Positioned(
-            top: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                "${_currentSpeed.toStringAsFixed(1)} km/h",
-                style: const TextStyle(color: Colors.white, fontSize: 18),
-              ),
-            ),
-          ),
       ],
     );
   }
