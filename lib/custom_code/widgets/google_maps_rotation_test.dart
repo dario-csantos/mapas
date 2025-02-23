@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
-import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 
 class GoogleMapsRotationTest extends StatefulWidget {
@@ -28,61 +27,51 @@ class GoogleMapsRotationTest extends StatefulWidget {
 
 class _GoogleMapsRotationTestState extends State<GoogleMapsRotationTest> {
   gmaps.GoogleMapController? _mapController;
-  gmaps.LatLng? _currentPosition;
-  double _currentHeading = 0.0;
-  double _currentSpeed = 0.0;
-  StreamSubscription<Position>? _positionStream;
+  int _currentIndex = 0;
+  double _currentSpeed = 10.0;
+  bool _mapInitialized = false;
+  Timer? _simulationTimer;
+
+  // **📍 Lista de Coordenadas para Simular um Trajeto**
+  final List<gmaps.LatLng> _routePoints = [
+    gmaps.LatLng(-23.5505, -46.6333), // São Paulo (início)
+    gmaps.LatLng(-23.5510, -46.6338),
+    gmaps.LatLng(-23.5520, -46.6345),
+    gmaps.LatLng(-23.5535, -46.6355),
+    gmaps.LatLng(-23.5550, -46.6365), // Final do trajeto
+  ];
 
   @override
   void initState() {
     super.initState();
-    _startTracking();
+    _startSimulatedMovement();
   }
 
   @override
   void dispose() {
-    _positionStream?.cancel();
+    _simulationTimer?.cancel();
     super.dispose();
   }
 
-  /// Inicia o rastreamento de localização e direção
-  Future<void> _startTracking() async {
-    LocationPermission permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      print("❌ Permissão negada.");
-      return;
-    }
-
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 1,
-      ),
-    ).listen((Position newPosition) {
-      _updateUserLocation(newPosition);
+  /// Simula o movimento seguindo os pontos da lista
+  void _startSimulatedMovement() {
+    _simulationTimer = Timer.periodic(Duration(seconds: 2), (timer) {
+      if (_currentIndex < _routePoints.length - 1) {
+        _currentIndex++;
+        _updatePosition();
+      } else {
+        _simulationTimer
+            ?.cancel(); // Para o movimento ao chegar ao destino final
+      }
     });
   }
 
-  /// Atualiza a posição e a rotação do mapa
-  void _updateUserLocation(Position position) {
-    final gmaps.LatLng newPosition =
-        gmaps.LatLng(position.latitude, position.longitude);
-
-    double speedKmH = position.speed * 3.6;
-    if (speedKmH.isNaN || speedKmH < 0) {
-      speedKmH = 0.0;
-    }
-
-    double heading = position.heading;
-    if (heading.isNaN || heading < 0) {
-      heading = _currentHeading;
-    }
+  /// Atualiza a posição do usuário no mapa
+  void _updatePosition() {
+    gmaps.LatLng newPosition = _routePoints[_currentIndex];
 
     setState(() {
-      _currentPosition = newPosition;
-      _currentHeading = heading;
-      _currentSpeed = speedKmH;
+      _currentSpeed = 10.0;
     });
 
     if (_mapController != null) {
@@ -91,7 +80,7 @@ class _GoogleMapsRotationTestState extends State<GoogleMapsRotationTest> {
           gmaps.CameraPosition(
             target: newPosition,
             zoom: 17,
-            bearing: _currentHeading, // Faz o mapa girar
+            bearing: _currentIndex * 45, // Simula rotação conforme avança
             tilt: 45,
           ),
         ),
@@ -106,40 +95,30 @@ class _GoogleMapsRotationTestState extends State<GoogleMapsRotationTest> {
         Container(
           width: widget.width ?? double.infinity,
           height: widget.height ?? double.infinity,
-          child: _currentPosition == null
-              ? const Center(child: CircularProgressIndicator())
-              : gmaps.GoogleMap(
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                    _mapController!.animateCamera(
-                      gmaps.CameraUpdate.newCameraPosition(
-                        gmaps.CameraPosition(
-                          target: _currentPosition!,
-                          zoom: 17,
-                          bearing: _currentHeading,
-                          tilt: 45,
-                        ),
-                      ),
-                    );
-                  },
-                  initialCameraPosition: gmaps.CameraPosition(
-                    target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
-                    zoom: 17,
-                  ),
-                  markers: _currentPosition != null
-                      ? {
-                          gmaps.Marker(
-                            markerId: const gmaps.MarkerId("user_position"),
-                            position: _currentPosition!,
-                            icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-                                gmaps.BitmapDescriptor.hueBlue),
-                          ),
-                        }
-                      : {},
-                  myLocationEnabled: false,
-                  compassEnabled: true,
-                  trafficEnabled: false,
-                ),
+          child: gmaps.GoogleMap(
+            onMapCreated: (controller) {
+              _mapController = controller;
+              if (!_mapInitialized) {
+                _mapInitialized = true;
+                _updatePosition();
+              }
+            },
+            initialCameraPosition: gmaps.CameraPosition(
+              target: _routePoints.first,
+              zoom: 17,
+            ),
+            markers: {
+              gmaps.Marker(
+                markerId: gmaps.MarkerId("user_position"),
+                position: _routePoints[_currentIndex],
+                icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+                    gmaps.BitmapDescriptor.hueBlue),
+              ),
+            },
+            myLocationEnabled: false,
+            compassEnabled: true,
+            trafficEnabled: false,
+          ),
         ),
 
         // Exibição da velocidade
@@ -152,9 +131,18 @@ class _GoogleMapsRotationTestState extends State<GoogleMapsRotationTest> {
               color: Colors.black.withOpacity(0.7),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text(
-              "Velocidade: ${_currentSpeed.toStringAsFixed(1)} km/h",
-              style: const TextStyle(color: Colors.white, fontSize: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Velocidade: ${_currentSpeed.toStringAsFixed(1)} km/h",
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                ),
+                Text(
+                  "Posição: ${_routePoints[_currentIndex]}",
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
             ),
           ),
         ),
