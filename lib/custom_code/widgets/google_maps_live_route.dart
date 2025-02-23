@@ -17,6 +17,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     super.key,
     this.width,
     this.height,
+    this.initialLocation,
     required this.updateIntervalSeconds, // Intervalo de atualização
     required this.minDistanceFilter, // Distância mínima
     required this.routeColor, // Cor da linha
@@ -26,6 +27,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
 
   final double? width;
   final double? height;
+  final LatLng? initialLocation;
   final int updateIntervalSeconds; // Tempo de atualização
   final double minDistanceFilter; // Distância mínima em metros
   final Color routeColor; // Cor da linha da rota
@@ -39,7 +41,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
 class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   late gmaps.GoogleMapController _mapController;
   Set<gmaps.Polyline> _polylines = {};
-  Set<gmaps.Marker> _markers = {}; // Adicionado para exibir o ícone de posição
+  Set<gmaps.Marker> _markers = {}; // Ícone de posição
   List<gmaps.LatLng> _routePoints = [];
   StreamSubscription<Position>? _positionStream;
   Timer? _updateTimer;
@@ -62,13 +64,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
 
   /// Obtém a posição inicial do usuário e define no mapa
   Future<void> _getInitialPosition() async {
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best);
+    if (widget.initialLocation == null) return;
+
     setState(() {
-      _currentPosition = gmaps.LatLng(position.latitude, position.longitude);
+      _currentPosition = gmaps.LatLng(
+          widget.initialLocation!.latitude, widget.initialLocation!.longitude);
     });
 
-    // Move a câmera para a posição inicial
     _mapController.animateCamera(
       gmaps.CameraUpdate.newCameraPosition(
         gmaps.CameraPosition(
@@ -84,7 +86,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     LocationPermission permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      print("Permissão negada. Não será possível rastrear o trajeto.");
+      print("❌ Permissão negada. Não será possível rastrear o trajeto.");
       return;
     }
 
@@ -118,8 +120,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     // Calcula a velocidade (conversão de m/s para km/h)
     double speedKmH = position.speed * 3.6;
 
+    // Se o GPS não fornecer velocidade, usa 0 km/h como fallback
+    if (speedKmH.isNaN || speedKmH < 0) {
+      speedKmH = 0.0;
+    }
+
+    // Debugging: Mostra a velocidade no console
+    print(
+        "📍 Nova posição: $newPosition, Velocidade: ${speedKmH.toStringAsFixed(1)} km/h");
+
     setState(() {
-      _currentSpeed = speedKmH; // Atualiza a velocidade atual
+      _currentSpeed = speedKmH;
     });
 
     // Se já existe uma última posição válida, verificamos a distância
@@ -200,6 +211,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             trafficEnabled: false,
           ),
         ),
+
+        // Exibição da velocidade corrigida
         if (widget.showSpeed)
           Positioned(
             top: 20,
