@@ -81,6 +81,7 @@ class _GoogleMapsSimulationState extends State<GoogleMapsSimulation> {
   int _currentIndex = 0;
   Timer? _simulationTimer;
   double _currentSpeed = 30.0;
+  List<gmaps.LatLng> _drawnRoute = [];
 
   @override
   void initState() {
@@ -108,6 +109,7 @@ class _GoogleMapsSimulationState extends State<GoogleMapsSimulation> {
 
   void _updatePosition() {
     gmaps.LatLng newPosition = _routePoints[_currentIndex];
+    _drawnRoute.add(newPosition);
     double bearing =
         _calculateBearing(_routePoints[_currentIndex - 1], newPosition);
 
@@ -123,7 +125,7 @@ class _GoogleMapsSimulationState extends State<GoogleMapsSimulation> {
       _polylines = {
         gmaps.Polyline(
           polylineId: const gmaps.PolylineId("simulation_route"),
-          points: _routePoints,
+          points: _drawnRoute,
           color: widget.routeColor,
           width: 5,
         )
