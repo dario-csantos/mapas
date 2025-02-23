@@ -40,11 +40,19 @@ class _GoogleMapsSimulationState extends State<GoogleMapsSimulation> {
   Set<gmaps.Marker> _markers = {};
   List<gmaps.LatLng> _routePoints = [
     gmaps.LatLng(37.135891, -8.543395),
+    gmaps.LatLng(37.135858, -8.543616),
+    gmaps.LatLng(37.135826, -8.543837),
+    gmaps.LatLng(37.135794, -8.544058),
     gmaps.LatLng(37.135761, -8.544279),
+    gmaps.LatLng(37.135729, -8.544351),
     gmaps.LatLng(37.135695, -8.544423),
+    gmaps.LatLng(37.135548, -8.544541),
     gmaps.LatLng(37.135401, -8.544660),
+    gmaps.LatLng(37.135289, -8.544875),
     gmaps.LatLng(37.135178, -8.545090),
+    gmaps.LatLng(37.135190, -8.545262),
     gmaps.LatLng(37.135202, -8.545434),
+    gmaps.LatLng(37.135232, -8.545476),
     gmaps.LatLng(37.135261, -8.545517),
     gmaps.LatLng(37.136798, -8.545834),
     gmaps.LatLng(37.138868, -8.546259),
@@ -84,61 +92,24 @@ class _GoogleMapsSimulationState extends State<GoogleMapsSimulation> {
   List<gmaps.LatLng> _drawnRoute = [];
 
   @override
-  void initState() {
-    super.initState();
-    _startSimulation();
-  }
-
-  @override
-  void dispose() {
-    _simulationTimer?.cancel();
-    super.dispose();
-  }
-
-  void _startSimulation() {
-    _simulationTimer = Timer.periodic(
-        Duration(seconds: widget.updateIntervalSeconds), (timer) {
-      if (_currentIndex < _routePoints.length - 1) {
-        _currentIndex++;
-        _updatePosition();
-      } else {
-        _simulationTimer?.cancel();
-      }
-    });
-  }
-
-  void _updatePosition() {
-    gmaps.LatLng newPosition = _routePoints[_currentIndex];
-    _drawnRoute.add(newPosition);
-    double bearing =
-        _calculateBearing(_routePoints[_currentIndex - 1], newPosition);
-
-    setState(() {
-      _markers = {
-        gmaps.Marker(
-          markerId: const gmaps.MarkerId("user_position"),
-          position: newPosition,
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-              gmaps.BitmapDescriptor.hueBlue),
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        gmaps.GoogleMap(
+          onMapCreated: (controller) {
+            _mapController = controller;
+          },
+          initialCameraPosition: gmaps.CameraPosition(
+            target: _routePoints.first,
+            zoom: widget.initialZoom,
+          ),
+          markers: _markers,
+          polylines: _polylines,
+          myLocationEnabled: false,
+          compassEnabled: true,
+          trafficEnabled: false,
         ),
-      };
-      _polylines = {
-        gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("simulation_route"),
-          points: _drawnRoute,
-          color: widget.routeColor,
-          width: 5,
-        )
-      };
-    });
-    _mapController.animateCamera(
-      gmaps.CameraUpdate.newCameraPosition(
-        gmaps.CameraPosition(
-          target: newPosition,
-          zoom: widget.initialZoom,
-          bearing: bearing,
-        ),
-      ),
+      ],
     );
   }
 
@@ -150,23 +121,5 @@ class _GoogleMapsSimulationState extends State<GoogleMapsSimulation> {
     double x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLon);
     double bearing = atan2(y, x) * (180 / pi);
     return (bearing + 360) % 360;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return gmaps.GoogleMap(
-      onMapCreated: (controller) {
-        _mapController = controller;
-      },
-      initialCameraPosition: gmaps.CameraPosition(
-        target: _routePoints.first,
-        zoom: widget.initialZoom,
-      ),
-      markers: _markers,
-      polylines: _polylines,
-      myLocationEnabled: false,
-      compassEnabled: true,
-      trafficEnabled: false,
-    );
   }
 }

@@ -99,7 +99,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                         child: custom_widgets.GoogleMapsSimulation(
                           width: double.infinity,
                           height: 700.0,
-                          updateIntervalSeconds: 1,
+                          updateIntervalSeconds: 2,
                           routeColor: FlutterFlowTheme.of(context).error,
                           showSpeed: true,
                           initialZoom: 17.0,
