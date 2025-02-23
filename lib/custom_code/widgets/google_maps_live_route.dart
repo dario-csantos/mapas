@@ -9,9 +9,9 @@ import 'package:flutter/material.dart';
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
 import 'dart:async';
+import 'package:flutter/services.dart'; // Import necessário para manter a tela ligada
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
-import 'package:wakelock/wakelock.dart';
 
 class GoogleMapsLiveRoute extends StatefulWidget {
   const GoogleMapsLiveRoute({
@@ -64,8 +64,10 @@ class GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.initState();
     _getInitialPosition();
     _startTracking();
-    Wakelock.enable();
     _startBlinkingMarker();
+
+    // 🚀 **Mantém a tela ativa** (Substituto do `wakelock`)
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
   @override
@@ -73,7 +75,10 @@ class GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _positionStream?.cancel();
     _updateTimer?.cancel();
     _blinkTimer?.cancel();
-    Wakelock.disable();
+
+    // 🛑 **Permite que a tela desligue ao sair**
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
     super.dispose();
   }
 
