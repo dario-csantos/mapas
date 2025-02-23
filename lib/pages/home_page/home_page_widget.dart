@@ -2,6 +2,7 @@ import '/backend/supabase/supabase.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
+import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
@@ -124,7 +125,14 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           routeColor: FlutterFlowTheme.of(context).error,
                           showSpeed: true,
                           initialZoom: 17.0,
-                          initialLocation: currentUserLocationValue,
+                          showMarkers: true,
+                          markerType: 'single',
+                          initialLocation: currentUserLocationValue!,
+                          markerLocations: functions.converteStringLatLng(
+                              homePageTrakingDriverRowList
+                                  .map((e) => e.location)
+                                  .withoutNulls
+                                  .toList()),
                         ),
                       ),
                     ],
