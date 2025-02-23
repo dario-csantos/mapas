@@ -100,6 +100,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           width: double.infinity,
                           height: 700.0,
                           updateIntervalSeconds: 2,
+                          minDistanceFilter: 3.0,
                           routeColor: FlutterFlowTheme.of(context).error,
                           showSpeed: true,
                           initialZoom: 17.0,
