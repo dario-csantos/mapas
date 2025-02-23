@@ -38,7 +38,10 @@ class _GoogleMapsSimulationState extends State<GoogleMapsSimulation> {
   late gmaps.GoogleMapController _mapController;
   Set<gmaps.Polyline> _polylines = {};
   Set<gmaps.Marker> _markers = {};
-  List<gmaps.LatLng> _routePoints = [
+  List<gmaps.LatLng> _drawnRoute = [];
+
+  // Lista de coordenadas ajustadas para motocicleta (10-20m)
+  final List<gmaps.LatLng> _routePoints = [
     gmaps.LatLng(37.135891, -8.543395),
     gmaps.LatLng(37.135858, -8.543616),
     gmaps.LatLng(37.135826, -8.543837),
@@ -89,7 +92,79 @@ class _GoogleMapsSimulationState extends State<GoogleMapsSimulation> {
   int _currentIndex = 0;
   Timer? _simulationTimer;
   double _currentSpeed = 30.0;
-  List<gmaps.LatLng> _drawnRoute = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _startSimulation();
+  }
+
+  @override
+  void dispose() {
+    _simulationTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startSimulation() {
+    _simulationTimer = Timer.periodic(
+      Duration(seconds: widget.updateIntervalSeconds),
+      (timer) {
+        if (_currentIndex < _routePoints.length - 1) {
+          _currentIndex++;
+          _updatePosition();
+        } else {
+          _simulationTimer?.cancel();
+        }
+      },
+    );
+  }
+
+  void _updatePosition() {
+    gmaps.LatLng newPosition = _routePoints[_currentIndex];
+    _drawnRoute.add(newPosition);
+    double bearing =
+        _calculateBearing(_routePoints[max(0, _currentIndex - 1)], newPosition);
+
+    setState(() {
+      _currentSpeed = Random().nextDouble() * 50 + 10;
+      _markers = {
+        gmaps.Marker(
+          markerId: const gmaps.MarkerId("user_position"),
+          position: newPosition,
+          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+              gmaps.BitmapDescriptor.hueBlue),
+        ),
+      };
+      _polylines = {
+        gmaps.Polyline(
+          polylineId: const gmaps.PolylineId("simulation_route"),
+          points: _drawnRoute,
+          color: widget.routeColor,
+          width: 5,
+        ),
+      };
+    });
+
+    _mapController.animateCamera(
+      gmaps.CameraUpdate.newCameraPosition(
+        gmaps.CameraPosition(
+          target: newPosition,
+          zoom: widget.initialZoom,
+          bearing: bearing,
+        ),
+      ),
+    );
+  }
+
+  double _calculateBearing(gmaps.LatLng start, gmaps.LatLng end) {
+    double lat1 = start.latitude * (pi / 180);
+    double lat2 = end.latitude * (pi / 180);
+    double deltaLon = (end.longitude - start.longitude) * (pi / 180);
+    double y = sin(deltaLon) * cos(lat2);
+    double x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLon);
+    double bearing = atan2(y, x) * (180 / pi);
+    return (bearing + 360) % 360;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,17 +184,23 @@ class _GoogleMapsSimulationState extends State<GoogleMapsSimulation> {
           compassEnabled: true,
           trafficEnabled: false,
         ),
+        if (widget.showSpeed)
+          Positioned(
+            top: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                "Velocidade: ${_currentSpeed.toStringAsFixed(1)} km/h",
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ),
       ],
     );
-  }
-
-  double _calculateBearing(gmaps.LatLng start, gmaps.LatLng end) {
-    double lat1 = start.latitude * (pi / 180);
-    double lat2 = end.latitude * (pi / 180);
-    double deltaLon = (end.longitude - start.longitude) * (pi / 180);
-    double y = sin(deltaLon) * cos(lat2);
-    double x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLon);
-    double bearing = atan2(y, x) * (180 / pi);
-    return (bearing + 360) % 360;
   }
 }
