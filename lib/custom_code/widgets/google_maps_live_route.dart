@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 // Begin custom widget code
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
+import 'index.dart'; // Imports other custom widgets
+
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -54,7 +56,56 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   gmaps.LatLng? _currentPosition;
   double _currentSpeed = 0.0;
   double _currentHeading = 0.0;
-  double _currentZoom = 16.0;
+  double _currentZoom = 17.0;
+
+  List<gmaps.LatLng> trajetoPontos = [
+    gmaps.LatLng(37.7749, -122.4194), // San Francisco
+    gmaps.LatLng(40.7128, -74.0060), // Nova York
+  ];
+
+  /// Aplica o estilo ao mapa
+  void _setMapStyle() async {
+    String style = '''
+ [
+  {
+    "featureType": "poi",
+    "stylers": [{"visibility": "off"}]
+  },
+  {
+    "featureType": "road",
+    "stylers": [{"color": "#ffffff"}]
+  },
+  {
+    "featureType": "transit",
+    "stylers": [{"visibility": "off"}]
+  },
+  {
+    "featureType": "landscape",
+    "stylers": [{"color": "#f2f2f2"}]
+  },
+  {
+    "featureType": "administrative",
+    "stylers": [{"visibility": "off"}]
+  },
+  {
+    "featureType": "water",
+    "stylers": [{"color": "#c9c9c9"}]
+  },
+  {
+    "featureType": "landscape.man_made",
+    "stylers": [{"visibility": "off"}]
+  },
+  {
+    "featureType": "building",
+    "elementType": "geometry",
+    "stylers": [{"visibility": "off"}]
+  }
+]
+
+    ''';
+
+    _mapController?.setMapStyle(style);
+  }
 
   @override
   void initState() {
@@ -84,7 +135,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             gmaps.CameraPosition(
               target: _currentPosition!,
               zoom: widget.initialZoom,
-              tilt: 60.0, // Inclinação da câmera
+              tilt: 0.0, // Defina para 0.0 para remover inclinação
             ),
           ),
         );
@@ -118,7 +169,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// Atualiza a posição do usuário, velocidade e mantém o zoom personalizado
   void _updateUserLocation(Position position) async {
     final gmaps.LatLng newPosition =
         gmaps.LatLng(position.latitude, position.longitude);
@@ -141,6 +191,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentSpeed = speedKmH;
       _currentHeading = heading;
       _routePoints.add(newPosition);
+
+      trajetoPontos.add(newPosition); // Adiciona coordenada ao trajeto
+
+      // 🔥 Agora converte para string antes de salvar no App State do FlutterFlow
+      FFAppState().trajetoPontos = trajetoPontos
+          .map((p) => "${p.latitude},${p.longitude}") // 🔥 Converte para string
+          .toList();
 
       _markers = {
         gmaps.Marker(
@@ -167,30 +224,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           target: newPosition,
           zoom: _currentZoom,
           bearing: _currentHeading,
-          tilt: 60.0, // Inclinação da câmera
+          tilt: 0.0, // 🔥 Remove a inclinação 3D
         ),
       ),
     );
-  }
-
-  /// Adiciona os marcadores ao mapa
-  Set<gmaps.Marker> _buildMarkers() {
-    if (!widget.showMarkers) return {};
-    if (widget.markerType == "Single" && widget.markerLocations.isNotEmpty) {
-      return {
-        gmaps.Marker(
-          markerId: const gmaps.MarkerId("single_marker"),
-          position: gmaps.LatLng(widget.markerLocations.first.latitude,
-              widget.markerLocations.first.longitude),
-        )
-      };
-    }
-    return widget.markerLocations
-        .map((location) => gmaps.Marker(
-              markerId: gmaps.MarkerId(location.toString()),
-              position: gmaps.LatLng(location.latitude, location.longitude),
-            ))
-        .toSet();
   }
 
   @override
@@ -203,6 +240,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           child: gmaps.GoogleMap(
             onMapCreated: (controller) {
               _mapController = controller;
+
+              // Aplica o estilo ao mapa
+              _setMapStyle();
+
               if (_currentPosition != null) {
                 Future.delayed(Duration(milliseconds: 500), () {
                   _mapController!.animateCamera(
@@ -211,6 +252,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                         target: _currentPosition!,
                         zoom: widget.initialZoom,
                         bearing: _currentHeading,
+                        tilt: 0.0, // 🔥 Removida inclinação 3D
                       ),
                     ),
                   );
@@ -220,16 +262,15 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             initialCameraPosition: gmaps.CameraPosition(
               target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
               zoom: widget.initialZoom,
+              tilt: 60.0, // 🔥 Remove inclinação 3D na posição inicial
             ),
-            markers: _buildMarkers().union(_markers),
+            markers: _markers,
             polylines: _polylines,
             myLocationEnabled: false,
             compassEnabled: true,
-            trafficEnabled: false,
+            trafficEnabled: true, // 🔥 Agora mostra trânsito no mapa
           ),
         ),
-
-        // Exibição da velocidade
         if (widget.showSpeed)
           Positioned(
             top: 20,

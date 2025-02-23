@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'backend/supabase/supabase.dart';
+import 'flutter_flow/flutter_flow_util.dart';
 
 class FFAppState extends ChangeNotifier {
   static FFAppState _instance = FFAppState._internal();
@@ -47,5 +49,11 @@ class FFAppState extends ChangeNotifier {
 
   void insertAtIndexInTrajetoPontos(int index, String value) {
     trajetoPontos.insert(index, value);
+  }
+
+  LatLng? _locations2 = LatLng(37.13617, -8.5376926);
+  LatLng? get locations2 => _locations2;
+  set locations2(LatLng? value) {
+    _locations2 = value;
   }
 }
