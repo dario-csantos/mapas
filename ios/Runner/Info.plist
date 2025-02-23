@@ -43,22 +43,7 @@
 	<true/>
 
 
-	<key>NSCameraUsageDescription</key>
-    <string>bgggggg</string>
-	<key>PermissionGroupNotification</key>
-    <string>ggggg</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-    <string>ggg</string>
-	<key>NSContactsUsageDescription</key>
-    <string>fg</string>
-	<key>NSMicrophoneUsageDescription</key>
-    <string>asdasdas</string>
-	<key>NSCalendarsUsageDescription</key>
-    <string>fg</string>
-	<key>NSFaceIDUsageDescription</key>
-    <string>fg</string>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-    <string>gffg</string>
+
 
 
 	<key>UILaunchStoryboardName</key>
