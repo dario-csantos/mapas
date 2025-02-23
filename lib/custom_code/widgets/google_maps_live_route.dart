@@ -70,7 +70,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.dispose();
   }
 
-  /// Obtém a posição inicial com base no parâmetro `initialLocation`
+  /// Obtém a posição inicial com base no parâmetro initialLocation
   Future<void> _getInitialPosition() async {
     setState(() {
       _currentPosition = gmaps.LatLng(
@@ -84,6 +84,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             gmaps.CameraPosition(
               target: _currentPosition!,
               zoom: widget.initialZoom,
+              tilt: 60.0, // Inclinação da câmera
             ),
           ),
         );
@@ -166,6 +167,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           target: newPosition,
           zoom: _currentZoom,
           bearing: _currentHeading,
+          tilt: 60.0, // Inclinação da câmera
         ),
       ),
     );
