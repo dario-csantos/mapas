@@ -1,6 +1,8 @@
 import '/backend/supabase/supabase.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
+import '/flutter_flow/flutter_flow_widgets.dart';
+import '/flutter_flow/instant_timer.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
@@ -112,30 +114,105 @@ class _HomePageWidgetState extends State<HomePageWidget> {
               child: Column(
                 mainAxisSize: MainAxisSize.max,
                 children: [
-                  Stack(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        height: 700.0,
-                        child: custom_widgets.GoogleMapsLiveRoute(
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        Container(
                           width: double.infinity,
                           height: 700.0,
-                          updateIntervalSeconds: 1,
-                          minDistanceFilter: 3.0,
-                          routeColor: FlutterFlowTheme.of(context).error,
-                          showSpeed: true,
-                          initialZoom: 17.0,
-                          showMarkers: false,
-                          markerType: 'single',
-                          initialLocation: currentUserLocationValue!,
-                          markerLocations: functions.converteStringLatLng(
-                              homePageTrakingDriverRowList
-                                  .map((e) => e.location)
-                                  .withoutNulls
-                                  .toList()),
+                          child: custom_widgets.GoogleMapsLiveRoute(
+                            width: double.infinity,
+                            height: 700.0,
+                            updateIntervalSeconds: 1,
+                            minDistanceFilter: 3.0,
+                            routeColor: FlutterFlowTheme.of(context).error,
+                            showSpeed: true,
+                            initialZoom: 17.0,
+                            showMarkers: false,
+                            markerType: 'single',
+                            initialLocation: currentUserLocationValue!,
+                            markerLocations: functions.converteStringLatLng(
+                                homePageTrakingDriverRowList
+                                    .map((e) => e.location)
+                                    .withoutNulls
+                                    .toList()),
+                          ),
                         ),
-                      ),
-                    ],
+                        Align(
+                          alignment: AlignmentDirectional(-0.97, 0.71),
+                          child: FFButtonWidget(
+                            onPressed: () async {
+                              _model.instantTimer?.cancel();
+                            },
+                            text: 'Stop',
+                            options: FFButtonOptions(
+                              height: 40.0,
+                              padding: EdgeInsetsDirectional.fromSTEB(
+                                  16.0, 0.0, 16.0, 0.0),
+                              iconPadding: EdgeInsetsDirectional.fromSTEB(
+                                  0.0, 0.0, 0.0, 0.0),
+                              color: FlutterFlowTheme.of(context).primary,
+                              textStyle: FlutterFlowTheme.of(context)
+                                  .titleSmall
+                                  .override(
+                                    fontFamily: 'Inter Tight',
+                                    color: Colors.white,
+                                    letterSpacing: 0.0,
+                                  ),
+                              elevation: 0.0,
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                        ),
+                        Align(
+                          alignment: AlignmentDirectional(-0.99, 0.58),
+                          child: FFButtonWidget(
+                            onPressed: () async {
+                              currentUserLocationValue =
+                                  await getCurrentUserLocation(
+                                      defaultLocation: LatLng(0.0, 0.0));
+                              _model.instantTimer = InstantTimer.periodic(
+                                duration: Duration(milliseconds: 1000),
+                                callback: (timer) async {
+                                  currentUserLocationValue =
+                                      await getCurrentUserLocation(
+                                          defaultLocation: LatLng(0.0, 0.0));
+                                  _model.valueInsert =
+                                      await TrakingDriverTable().insert({
+                                    'location':
+                                        currentUserLocationValue?.toString(),
+                                  });
+                                  FFAppState().addToTrajetoPontos(
+                                      currentUserLocationValue!.toString());
+                                  safeSetState(() {});
+                                },
+                                startImmediately: true,
+                              );
+
+                              safeSetState(() {});
+                            },
+                            text: 'Start',
+                            options: FFButtonOptions(
+                              height: 40.0,
+                              padding: EdgeInsetsDirectional.fromSTEB(
+                                  16.0, 0.0, 16.0, 0.0),
+                              iconPadding: EdgeInsetsDirectional.fromSTEB(
+                                  0.0, 0.0, 0.0, 0.0),
+                              color: FlutterFlowTheme.of(context).primary,
+                              textStyle: FlutterFlowTheme.of(context)
+                                  .titleSmall
+                                  .override(
+                                    fontFamily: 'Inter Tight',
+                                    color: Colors.white,
+                                    letterSpacing: 0.0,
+                                  ),
+                              elevation: 0.0,
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
