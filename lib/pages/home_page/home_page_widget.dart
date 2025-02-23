@@ -4,7 +4,6 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
@@ -43,7 +42,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    context.watch<FFAppState>();
     if (currentUserLocationValue == null) {
       return Container(
         color: FlutterFlowTheme.of(context).primaryBackground,
@@ -127,7 +125,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           routeColor: FlutterFlowTheme.of(context).error,
                           showSpeed: true,
                           initialZoom: 17.0,
-                          showMarkers: true,
+                          showMarkers: false,
                           markerType: 'single',
                           initialLocation: currentUserLocationValue!,
                           markerLocations: functions.converteStringLatLng(
@@ -136,13 +134,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                   .withoutNulls
                                   .toList()),
                         ),
-                      ),
-                      Text(
-                        FFAppState().trajetoPontos.length.toString(),
-                        style: FlutterFlowTheme.of(context).bodyMedium.override(
-                              fontFamily: 'Inter',
-                              letterSpacing: 0.0,
-                            ),
                       ),
                     ],
                   ),
