@@ -95,7 +95,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
               backgroundColor: FlutterFlowTheme.of(context).error,
               automaticallyImplyLeading: false,
               title: Text(
-                'GPS MCBDA 1.0',
+                'GPS MCBDA 1.0.3',
                 style: FlutterFlowTheme.of(context).headlineMedium.override(
                       fontFamily: 'Inter Tight',
                       color: Colors.white,
@@ -124,9 +124,9 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           minDistanceFilter: 3.0,
                           routeColor: FlutterFlowTheme.of(context).error,
                           showSpeed: true,
-                          initialZoom: 14.0,
+                          initialZoom: 16.0,
                           showMarkers: true,
-                          markerType: 'Multiple',
+                          markerType: 'single',
                           initialLocation: currentUserLocationValue!,
                           markerLocations: functions.converteStringLatLng(
                               homePageTrakingDriverRowList

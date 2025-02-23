@@ -8,16 +8,17 @@ import 'package:flutter/material.dart';
 // Begin custom widget code
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
+import 'dart:async';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
-import 'dart:async';
+import 'package:wakelock/wakelock.dart';
 
 class GoogleMapsLiveRoute extends StatefulWidget {
   const GoogleMapsLiveRoute({
     super.key,
     this.width,
     this.height,
-    required this.initialLocation, // Posição inicial do usuário (parâmetro)
+    required this.initialLocation,
     required this.updateIntervalSeconds,
     required this.minDistanceFilter,
     required this.routeColor,
@@ -37,40 +38,53 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final bool showSpeed;
   final double initialZoom;
   final bool showMarkers;
-  final String markerType; // "Single" ou "Multiple"
+  final String markerType;
   final List<LatLng> markerLocations;
 
   @override
-  State<GoogleMapsLiveRoute> createState() => _GoogleMapsLiveRouteState();
+  State<GoogleMapsLiveRoute> createState() => GoogleMapsLiveRouteState();
 }
 
-class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
+class GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   gmaps.GoogleMapController? _mapController;
   Set<gmaps.Polyline> _polylines = {};
   Set<gmaps.Marker> _markers = {};
   List<gmaps.LatLng> _routePoints = [];
   StreamSubscription<Position>? _positionStream;
   Timer? _updateTimer;
+  Timer? _blinkTimer;
   gmaps.LatLng? _currentPosition;
   double _currentSpeed = 0.0;
   double _currentHeading = 0.0;
   double _currentZoom = 16.0;
+  bool _markerVisible = true;
 
   @override
   void initState() {
     super.initState();
     _getInitialPosition();
     _startTracking();
+    Wakelock.enable();
+    _startBlinkingMarker();
   }
 
   @override
   void dispose() {
     _positionStream?.cancel();
     _updateTimer?.cancel();
+    _blinkTimer?.cancel();
+    Wakelock.disable();
     super.dispose();
   }
 
-  /// Obtém a posição inicial com base no parâmetro `initialLocation`
+  void _startBlinkingMarker() {
+    _blinkTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
+      setState(() {
+        _markerVisible = !_markerVisible;
+      });
+    });
+  }
+
   Future<void> _getInitialPosition() async {
     setState(() {
       _currentPosition = gmaps.LatLng(
@@ -91,7 +105,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// Inicia o rastreamento da localização do usuário
   Future<void> _startTracking() async {
     LocationPermission permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied ||
@@ -117,7 +130,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// Atualiza a posição do usuário, velocidade e mantém o zoom personalizado
   void _updateUserLocation(Position position) async {
     final gmaps.LatLng newPosition =
         gmaps.LatLng(position.latitude, position.longitude);
@@ -141,14 +153,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentHeading = heading;
       _routePoints.add(newPosition);
 
-      _markers = {
-        gmaps.Marker(
-          markerId: const gmaps.MarkerId("user_position"),
-          position: newPosition,
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-              gmaps.BitmapDescriptor.hueBlue),
-        ),
-      };
+      if (_markerVisible) {
+        _markers = {
+          gmaps.Marker(
+            markerId: const gmaps.MarkerId("user_position"),
+            position: newPosition,
+            icon: gmaps.BitmapDescriptor.defaultMarker,
+          ),
+        };
+      } else {
+        _markers = {};
+      }
 
       _polylines = {
         gmaps.Polyline(
@@ -169,26 +184,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         ),
       ),
     );
-  }
-
-  /// Adiciona os marcadores ao mapa
-  Set<gmaps.Marker> _buildMarkers() {
-    if (!widget.showMarkers) return {};
-    if (widget.markerType == "Single" && widget.markerLocations.isNotEmpty) {
-      return {
-        gmaps.Marker(
-          markerId: const gmaps.MarkerId("single_marker"),
-          position: gmaps.LatLng(widget.markerLocations.first.latitude,
-              widget.markerLocations.first.longitude),
-        )
-      };
-    }
-    return widget.markerLocations
-        .map((location) => gmaps.Marker(
-              markerId: gmaps.MarkerId(location.toString()),
-              position: gmaps.LatLng(location.latitude, location.longitude),
-            ))
-        .toSet();
   }
 
   @override
@@ -219,15 +214,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
               zoom: widget.initialZoom,
             ),
-            markers: _buildMarkers().union(_markers),
+            markers: _markers,
             polylines: _polylines,
             myLocationEnabled: false,
             compassEnabled: true,
             trafficEnabled: false,
           ),
         ),
-
-        // Exibição da velocidade
         if (widget.showSpeed)
           Positioned(
             top: 20,
