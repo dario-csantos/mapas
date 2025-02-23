@@ -2,7 +2,6 @@ import '/backend/supabase/supabase.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
-import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
@@ -21,15 +20,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
   late HomePageModel _model;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
-  LatLng? currentUserLocationValue;
 
   @override
   void initState() {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
-    getCurrentUserLocation(defaultLocation: LatLng(0.0, 0.0), cached: true)
-        .then((loc) => safeSetState(() => currentUserLocationValue = loc));
     WidgetsBinding.instance.addPostFrameCallback((_) => safeSetState(() {}));
   }
 
@@ -42,23 +38,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (currentUserLocationValue == null) {
-      return Container(
-        color: FlutterFlowTheme.of(context).primaryBackground,
-        child: Center(
-          child: SizedBox(
-            width: 50.0,
-            height: 50.0,
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                FlutterFlowTheme.of(context).primary,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return FutureBuilder<List<TrakingDriverRow>>(
       future: TrakingDriverTable().queryRows(
         queryFn: (q) => q,
@@ -92,7 +71,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
             key: scaffoldKey,
             backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
             appBar: AppBar(
-              backgroundColor: FlutterFlowTheme.of(context).error,
+              backgroundColor: FlutterFlowTheme.of(context).secondary,
               automaticallyImplyLeading: false,
               title: Text(
                 'GPS MCBDA 1.0.3',
@@ -117,22 +96,9 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                       Container(
                         width: double.infinity,
                         height: 700.0,
-                        child: custom_widgets.GoogleMapsLiveRoute(
+                        child: custom_widgets.GoogleMapsRotationTest(
                           width: double.infinity,
                           height: 700.0,
-                          updateIntervalSeconds: 2,
-                          minDistanceFilter: 3.0,
-                          routeColor: FlutterFlowTheme.of(context).error,
-                          showSpeed: true,
-                          initialZoom: 16.0,
-                          showMarkers: true,
-                          markerType: 'single',
-                          initialLocation: currentUserLocationValue!,
-                          markerLocations: functions.converteStringLatLng(
-                              homePageTrakingDriverRowList
-                                  .map((e) => e.location)
-                                  .withoutNulls
-                                  .toList()),
                         ),
                       ),
                     ],
