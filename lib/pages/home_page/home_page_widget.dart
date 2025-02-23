@@ -96,9 +96,13 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                       Container(
                         width: double.infinity,
                         height: 700.0,
-                        child: custom_widgets.GoogleMapsRotationTest(
+                        child: custom_widgets.GoogleMapsSimulation(
                           width: double.infinity,
                           height: 700.0,
+                          updateIntervalSeconds: 1,
+                          routeColor: FlutterFlowTheme.of(context).error,
+                          showSpeed: true,
+                          initialZoom: 17.0,
                         ),
                       ),
                     ],
