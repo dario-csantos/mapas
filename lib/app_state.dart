@@ -33,4 +33,10 @@ class FFAppState extends ChangeNotifier {
   set CoordCasa(LatLng? value) {
     _CoordCasa = value;
   }
+
+  bool _showRouteSave = false;
+  bool get showRouteSave => _showRouteSave;
+  set showRouteSave(bool value) {
+    _showRouteSave = value;
+  }
 }

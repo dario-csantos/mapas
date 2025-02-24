@@ -6,6 +6,7 @@ import '/flutter_flow/instant_timer.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
@@ -30,12 +31,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
-    getCurrentUserLocation(defaultLocation: LatLng(0.0, 0.0), cached: true)
-        .then((loc) => safeSetState(() => currentUserLocationValue = loc));
-    _model.switchValue1 = false;
-    _model.switchValue2 = false;
-    _model.switchValue3 = false;
-    _model.switchValue4 = false;
+    _model.switchTransitoValue = false;
+    _model.switchRoutesSaveValue = false;
+    _model.switchMarkersValue = false;
+    _model.switchRastroValue = false;
     WidgetsBinding.instance.addPostFrameCallback((_) => safeSetState(() {}));
   }
 
@@ -48,29 +47,11 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (currentUserLocationValue == null) {
-      return Container(
-        color: FlutterFlowTheme.of(context).primaryBackground,
-        child: Center(
-          child: SizedBox(
-            width: 50.0,
-            height: 50.0,
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                FlutterFlowTheme.of(context).primary,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    context.watch<FFAppState>();
 
     return FutureBuilder<List<ViewLocationsRow>>(
       future: ViewLocationsTable().queryRows(
-        queryFn: (q) => q.eqOrNull(
-          'driver_status',
-          true,
-        ),
+        queryFn: (q) => q,
       ),
       builder: (context, snapshot) {
         // Customize what your widget looks like when it's loading.
@@ -124,63 +105,39 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                   Expanded(
                     child: Stack(
                       children: [
-                        FutureBuilder<List<TrakingDriverRow>>(
-                          future: TrakingDriverTable().queryRows(
-                            queryFn: (q) => q.eqOrNull(
-                              'castomer',
-                              true,
-                            ),
+                        Container(
+                          width: double.infinity,
+                          height: 700.0,
+                          child: custom_widgets.GoogleMapsLiveRoute(
+                            width: double.infinity,
+                            height: 700.0,
+                            updateIntervalSeconds: 1,
+                            minDistanceFilter: 3.0,
+                            userRouteColor: Color(0xFF220CEC),
+                            routeColor: FlutterFlowTheme.of(context).error,
+                            showSpeed: true,
+                            showTraffic: _model.switchTransitoValue!,
+                            initialZoom: 14.0,
+                            mapTilt: 60.0,
+                            showMarkers: _model.switchMarkersValue!,
+                            showUserRoute: _model.switchRastroValue!,
+                            showSavedRoute: _model.switchRoutesSaveValue!,
+                            initialLocation: FFAppState().CoordCasa!,
+                            markerLocations: functions.converteStringLatLng(
+                                homePageViewLocationsRowList
+                                    .where((e) => e.customers == true)
+                                    .toList()
+                                    .map((e) => e.location)
+                                    .withoutNulls
+                                    .toList()),
+                            polylineRota: functions.converteStringLatLng(
+                                homePageViewLocationsRowList
+                                    .where((e) => e.driverStatus == true)
+                                    .toList()
+                                    .map((e) => e.location)
+                                    .withoutNulls
+                                    .toList()),
                           ),
-                          builder: (context, snapshot) {
-                            // Customize what your widget looks like when it's loading.
-                            if (!snapshot.hasData) {
-                              return Center(
-                                child: SizedBox(
-                                  width: 50.0,
-                                  height: 50.0,
-                                  child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      FlutterFlowTheme.of(context).primary,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
-                            List<TrakingDriverRow>
-                                googleMapsLiveRouteTrakingDriverRowList =
-                                snapshot.data!;
-
-                            return Container(
-                              width: double.infinity,
-                              height: 700.0,
-                              child: custom_widgets.GoogleMapsLiveRoute(
-                                width: double.infinity,
-                                height: 700.0,
-                                showUserRoute: _model.switchValue4!,
-                                updateIntervalSeconds: 1,
-                                minDistanceFilter: 3.0,
-                                userRouteColor: Color(0xFF2914E5),
-                                routeColor: FlutterFlowTheme.of(context).error,
-                                showSpeed: true,
-                                showTraffic: _model.switchValue1!,
-                                initialZoom: 17.0,
-                                mapTilt: 0.0,
-                                showMarkers: _model.switchValue3!,
-                                showSavedRoute: true,
-                                initialLocation: currentUserLocationValue!,
-                                markerLocations: functions.converteStringLatLng(
-                                    googleMapsLiveRouteTrakingDriverRowList
-                                        .map((e) => e.location)
-                                        .withoutNulls
-                                        .toList()),
-                                polylineRota: functions.converteStringLatLng(
-                                    homePageViewLocationsRowList
-                                        .map((e) => e.location)
-                                        .withoutNulls
-                                        .toList()),
-                              ),
-                            );
-                          },
                         ),
                         Align(
                           alignment: AlignmentDirectional(-0.95, 0.91),
@@ -270,10 +227,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                   mainAxisSize: MainAxisSize.max,
                                   children: [
                                     Switch.adaptive(
-                                      value: _model.switchValue1!,
+                                      value: _model.switchTransitoValue!,
                                       onChanged: (newValue) async {
-                                        safeSetState(() =>
-                                            _model.switchValue1 = newValue);
+                                        safeSetState(() => _model
+                                            .switchTransitoValue = newValue);
                                       },
                                       activeColor:
                                           FlutterFlowTheme.of(context).primary,
@@ -321,10 +278,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                   mainAxisSize: MainAxisSize.max,
                                   children: [
                                     Switch.adaptive(
-                                      value: _model.switchValue2!,
+                                      value: _model.switchRoutesSaveValue!,
                                       onChanged: (newValue) async {
-                                        safeSetState(() =>
-                                            _model.switchValue2 = newValue);
+                                        safeSetState(() => _model
+                                            .switchRoutesSaveValue = newValue);
                                       },
                                       activeColor:
                                           FlutterFlowTheme.of(context).primary,
@@ -371,22 +328,56 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
                                   children: [
-                                    Switch.adaptive(
-                                      value: _model.switchValue3!,
-                                      onChanged: (newValue) async {
-                                        safeSetState(() =>
-                                            _model.switchValue3 = newValue);
+                                    FutureBuilder<List<TrakingDriverRow>>(
+                                      future: TrakingDriverTable().queryRows(
+                                        queryFn: (q) => q.eqOrNull(
+                                          'castomer',
+                                          true,
+                                        ),
+                                      ),
+                                      builder: (context, snapshot) {
+                                        // Customize what your widget looks like when it's loading.
+                                        if (!snapshot.hasData) {
+                                          return Center(
+                                            child: SizedBox(
+                                              width: 50.0,
+                                              height: 50.0,
+                                              child: CircularProgressIndicator(
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(
+                                                  FlutterFlowTheme.of(context)
+                                                      .primary,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                        List<TrakingDriverRow>
+                                            switchMarkersTrakingDriverRowList =
+                                            snapshot.data!;
+
+                                        return Switch.adaptive(
+                                          value: _model.switchMarkersValue!,
+                                          onChanged: (newValue) async {
+                                            safeSetState(() =>
+                                                _model.switchMarkersValue =
+                                                    newValue);
+                                          },
+                                          activeColor:
+                                              FlutterFlowTheme.of(context)
+                                                  .primary,
+                                          activeTrackColor:
+                                              FlutterFlowTheme.of(context)
+                                                  .primary,
+                                          inactiveTrackColor:
+                                              FlutterFlowTheme.of(context)
+                                                  .alternate,
+                                          inactiveThumbColor:
+                                              FlutterFlowTheme.of(context)
+                                                  .secondaryBackground,
+                                        );
                                       },
-                                      activeColor:
-                                          FlutterFlowTheme.of(context).primary,
-                                      activeTrackColor:
-                                          FlutterFlowTheme.of(context).primary,
-                                      inactiveTrackColor:
-                                          FlutterFlowTheme.of(context)
-                                              .alternate,
-                                      inactiveThumbColor:
-                                          FlutterFlowTheme.of(context)
-                                              .secondaryBackground,
                                     ),
                                   ],
                                 ),
@@ -423,10 +414,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                   mainAxisSize: MainAxisSize.max,
                                   children: [
                                     Switch.adaptive(
-                                      value: _model.switchValue4!,
+                                      value: _model.switchRastroValue!,
                                       onChanged: (newValue) async {
-                                        safeSetState(() =>
-                                            _model.switchValue4 = newValue);
+                                        safeSetState(() => _model
+                                            .switchRastroValue = newValue);
                                       },
                                       activeColor:
                                           FlutterFlowTheme.of(context).primary,

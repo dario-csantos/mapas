@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
 import 'index.dart'; // Imports other custom widgets
+
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -59,7 +60,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   gmaps.GoogleMapController? _mapController;
   Set<gmaps.Polyline> _polylines = {};
   Set<gmaps.Marker> _markers = {};
-  gmaps.Marker? _userMarker; // 🔥 Mantém sempre o marcador do usuário visível
   List<gmaps.LatLng> _userRoutePoints = [];
   StreamSubscription<Position>? _positionStream;
   Timer? _updateTimer;
@@ -67,6 +67,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   double _currentSpeed = 0.0;
   double _currentHeading = 0.0;
   double _currentZoom = 16.0;
+
+  // 🔥 Chave única para forçar rebuild do mapa
+  Key _mapKey = UniqueKey();
 
   @override
   void initState() {
@@ -87,7 +90,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     setState(() {
       _currentPosition = gmaps.LatLng(
           widget.initialLocation.latitude, widget.initialLocation.longitude);
-      _updateUserMarker(); // 🔥 Atualiza o marcador do usuário na inicialização
     });
 
     Future.delayed(Duration(milliseconds: 500), () {
@@ -153,7 +155,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentHeading = heading;
       _userRoutePoints.add(newPosition);
 
-      _updateUserMarker(); // 🔥 Atualiza apenas o marcador do usuário
+      _markers.removeWhere((m) => m.markerId.value == "user_position");
+
+      // 🔥 O usuário SEMPRE aparece no mapa
+      _markers.add(
+        gmaps.Marker(
+          markerId: const gmaps.MarkerId("user_position"),
+          position: newPosition,
+          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+              gmaps.BitmapDescriptor.hueBlue),
+        ),
+      );
 
       _updateUserPolyline();
     });
@@ -168,18 +180,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         ),
       ),
     );
-  }
-
-  /// 🔥 Mantém sempre o marcador do usuário visível
-  void _updateUserMarker() {
-    setState(() {
-      _userMarker = gmaps.Marker(
-        markerId: const gmaps.MarkerId("user_position"),
-        position: _currentPosition!,
-        icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-            gmaps.BitmapDescriptor.hueBlue),
-      );
-    });
   }
 
   void _updateUserPolyline() {
@@ -199,29 +199,33 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   }
 
   void _loadPolylineRota() {
-    if (!widget.showSavedRoute) return;
-
-    List<gmaps.LatLng> convertedPoints = widget.polylineRota
-        .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
-        .toList();
+    print(
+        "🔄 Atualizando rota gravada, showSavedRoute: ${widget.showSavedRoute}");
 
     setState(() {
       _polylines.removeWhere((poly) => poly.polylineId.value == "saved_route");
-      _polylines.add(
-        gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("saved_route"),
-          points: convertedPoints,
-          color: widget.routeColor,
-          width: 5,
-        ),
-      );
+
+      if (widget.showSavedRoute) {
+        List<gmaps.LatLng> convertedPoints = widget.polylineRota
+            .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
+            .toList();
+
+        _polylines.add(
+          gmaps.Polyline(
+            polylineId: const gmaps.PolylineId("saved_route"),
+            points: convertedPoints,
+            color: widget.routeColor,
+            width: 5,
+          ),
+        );
+      }
+
+      _mapKey = UniqueKey(); // 🔥 Força o rebuild do mapa
     });
   }
 
-  /// 🔥 Exibe apenas os marcadores que foram ativados pelo parâmetro `showMarkers`
   Set<gmaps.Marker> _buildMarkers() {
     if (!widget.showMarkers) return {};
-
     return widget.markerLocations
         .map((location) => gmaps.Marker(
               markerId: gmaps.MarkerId(location.toString()),
@@ -235,6 +239,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     return Stack(
       children: [
         gmaps.GoogleMap(
+          key: _mapKey, // 🔥 Garante que o mapa se reconstrua
           onMapCreated: (controller) {
             _mapController = controller;
             _loadPolylineRota();
@@ -243,29 +248,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
             zoom: widget.initialZoom,
           ),
-          markers: _buildMarkers()
-              .union({_userMarker!}), // 🔥 Mantém sempre o marcador do usuário
+          markers: _markers.union(_buildMarkers()),
           polylines: _polylines,
           myLocationEnabled: false,
           compassEnabled: true,
           trafficEnabled: widget.showTraffic,
         ),
-        if (widget.showSpeed)
-          Positioned(
-            top: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                "${_currentSpeed.toStringAsFixed(1)} km/h",
-                style: const TextStyle(color: Colors.white, fontSize: 18),
-              ),
-            ),
-          ),
       ],
     );
   }
