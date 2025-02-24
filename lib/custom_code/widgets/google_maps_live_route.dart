@@ -23,13 +23,14 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.updateIntervalSeconds,
     required this.minDistanceFilter,
     required this.routeColor,
-    required this.userRouteColor, // 🔥 Nova cor para a polyline do usuário
     required this.showSpeed,
     required this.initialZoom,
     required this.showMarkers,
+    required this.showRecordedRoute, // 🔥 NOVO: Controla exibição da rota gravada
+    required this.showUserRoute, // 🔥 NOVO: Controla exibição da rota do usuário
     required this.markerType,
     this.markerLocations = const [],
-    this.polylineRota = const [], // 🔥 Rota salva do banco
+    this.polylineRota = const [],
   });
 
   final double? width;
@@ -37,14 +38,15 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final LatLng initialLocation;
   final int updateIntervalSeconds;
   final double minDistanceFilter;
-  final Color routeColor; // 🔥 Cor da rota salva
-  final Color userRouteColor; // 🔥 Cor do trajeto do usuário
+  final Color routeColor;
   final bool showSpeed;
-  final double initialZoom;
   final bool showMarkers;
+  final bool showRecordedRoute; // 🔥 NOVO PARAMETRO
+  final bool showUserRoute; // 🔥 NOVO PARAMETRO
+  final double initialZoom;
   final String markerType;
   final List<LatLng> markerLocations;
-  final List<LatLng> polylineRota; // 🔥 Rota salva do banco
+  final List<LatLng> polylineRota;
 
   @override
   State<GoogleMapsLiveRoute> createState() => _GoogleMapsLiveRouteState();
@@ -54,8 +56,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   gmaps.GoogleMapController? _mapController;
   Set<gmaps.Polyline> _polylines = {};
   Set<gmaps.Marker> _markers = {};
-  List<gmaps.LatLng> _routePoints =
-      []; // 🔥 Armazena o trajeto atual do usuário
+  List<gmaps.LatLng> _routePoints = [];
   StreamSubscription<Position>? _positionStream;
   Timer? _updateTimer;
   gmaps.LatLng? _currentPosition;
@@ -68,7 +69,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.initState();
     _getInitialPosition();
     _startTracking();
-    _loadPolylineRota(); // 🔥 Carrega a polyline salva do banco
+    _loadPolylineRota();
   }
 
   @override
@@ -78,6 +79,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.dispose();
   }
 
+  /// Obtém a posição inicial com base no parâmetro initialLocation
   Future<void> _getInitialPosition() async {
     setState(() {
       _currentPosition = gmaps.LatLng(
@@ -91,7 +93,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             gmaps.CameraPosition(
               target: _currentPosition!,
               zoom: widget.initialZoom,
-              tilt: 0.0,
+              tilt: 0.0, // 🔥 Remove inclinação 3D
             ),
           ),
         );
@@ -99,6 +101,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
+  /// Inicia o rastreamento da localização do usuário
   Future<void> _startTracking() async {
     LocationPermission permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied ||
@@ -124,13 +127,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// 🔥 Atualiza a posição do usuário e exibe a velocidade corretamente
+  /// Atualiza a posição do usuário, velocidade e mantém o zoom personalizado
   void _updateUserLocation(Position position) async {
     final gmaps.LatLng newPosition =
         gmaps.LatLng(position.latitude, position.longitude);
 
-    // 🔥 Garante que a velocidade seja exibida corretamente
-    double speedKmH = (position.speed * 3.6).clamp(0, 200);
+    double speedKmH = position.speed * 3.6;
     if (speedKmH.isNaN || speedKmH < 0) {
       speedKmH = 0.0;
     }
@@ -147,7 +149,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     setState(() {
       _currentSpeed = speedKmH;
       _currentHeading = heading;
-      _routePoints.add(newPosition); // 🔥 Atualiza trajeto do usuário
+      _routePoints.add(newPosition);
 
       _markers = {
         gmaps.Marker(
@@ -158,7 +160,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         ),
       };
 
-      _updatePolylines(); // 🔥 Atualiza as linhas no mapa
+      _loadPolylineRota(); // 🔥 Atualiza a polyline quando o usuário se move
     });
 
     _mapController!.animateCamera(
@@ -173,39 +175,42 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     );
   }
 
-  /// 🔥 Carrega a rota salva do banco e define a linha do usuário
+  /// 🔥 Carrega as polylines (rota gravada e do usuário) conforme os parâmetros de ativação
   void _loadPolylineRota() {
-    setState(() {
-      _updatePolylines();
-    });
-  }
+    Set<gmaps.Polyline> polylineSet = {};
 
-  /// 🔥 Atualiza ambas as polylines no mapa
-  void _updatePolylines() {
-    List<gmaps.LatLng> rotaSalva = widget.polylineRota
-        .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
-        .toList();
+    if (widget.showRecordedRoute && widget.polylineRota.isNotEmpty) {
+      List<gmaps.LatLng> convertedPoints = widget.polylineRota
+          .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
+          .toList();
 
-    setState(() {
-      _polylines = {
-        // 🔥 Linha fixa da rota salva
+      polylineSet.add(
         gmaps.Polyline(
           polylineId: const gmaps.PolylineId("polyline_rota"),
-          points: rotaSalva,
+          points: convertedPoints,
           color: widget.routeColor,
           width: 5,
         ),
-        // 🔥 Linha dinâmica do usuário
+      );
+    }
+
+    if (widget.showUserRoute && _routePoints.isNotEmpty) {
+      polylineSet.add(
         gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("polyline_usuario"),
+          polylineId: const gmaps.PolylineId("user_route"),
           points: _routePoints,
-          color: widget.userRouteColor,
-          width: 5,
+          color: Colors.blue, // 🔥 A rota do usuário será azul
+          width: 4,
         ),
-      };
+      );
+    }
+
+    setState(() {
+      _polylines = polylineSet;
     });
   }
 
+  /// 🔥 Adiciona os marcadores ao mapa
   Set<gmaps.Marker> _buildMarkers() {
     if (!widget.showMarkers) return {};
 
@@ -240,24 +245,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             trafficEnabled: false,
           ),
         ),
-
-        // 🔥 Mostra a velocidade atual no mapa
-        if (widget.showSpeed)
-          Positioned(
-            top: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                "${_currentSpeed.toStringAsFixed(1)} km/h",
-                style: const TextStyle(color: Colors.white, fontSize: 18),
-              ),
-            ),
-          ),
       ],
     );
   }

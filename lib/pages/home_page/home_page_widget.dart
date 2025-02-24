@@ -126,11 +126,9 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             updateIntervalSeconds: 1,
                             minDistanceFilter: 3.0,
                             routeColor: FlutterFlowTheme.of(context).error,
-                            userRouteColor:
-                                FlutterFlowTheme.of(context).primary,
                             showSpeed: true,
                             initialZoom: 17.0,
-                            showMarkers: true,
+                            showMarkers: false,
                             markerType: 'single',
                             initialLocation: currentUserLocationValue!,
                             markerLocations: functions.converteStringLatLng(
@@ -143,6 +141,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                     .map((e) => e.location)
                                     .withoutNulls
                                     .toList()),
+                            showRecordedRoute: true,
+                            showUserRoute: true,
                           ),
                         ),
                         Align(
