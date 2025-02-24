@@ -213,6 +213,8 @@ dynamic deserializeParam<T>(
             return ImagensRow(data);
           case ViewPostsGlobal1Row:
             return ViewPostsGlobal1Row(data);
+          case ViewLocationsDistinctOrderedRow:
+            return ViewLocationsDistinctOrderedRow(data);
           case PostsRow:
             return PostsRow(data);
           case VeiculosRow:
@@ -243,6 +245,8 @@ dynamic deserializeParam<T>(
             return ProfissoesRow(data);
           case ViewSocios1Row:
             return ViewSocios1Row(data);
+          case ViewTrajetoRow:
+            return ViewTrajetoRow(data);
           default:
             return null;
         }

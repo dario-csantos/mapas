@@ -63,6 +63,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.initState();
     _getInitialPosition();
     _startTracking();
+    _loadPolylineRota(); // 🔥 Carrega a Polyline na inicialização
   }
 
   @override
@@ -79,14 +80,14 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           widget.initialLocation.latitude, widget.initialLocation.longitude);
     });
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(Duration(milliseconds: 500), () {
       if (_mapController != null) {
         _mapController!.animateCamera(
           gmaps.CameraUpdate.newCameraPosition(
             gmaps.CameraPosition(
               target: _currentPosition!,
               zoom: widget.initialZoom,
-              tilt: 60.0, // Inclinação da câmera
+              tilt: 0.0, // 🔥 Remove inclinação 3D
             ),
           ),
         );
@@ -104,7 +105,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
 
     _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+      locationSettings: LocationSettings(
         accuracy: LocationAccuracy.best,
         distanceFilter: 1,
       ),
@@ -160,7 +161,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           target: newPosition,
           zoom: _currentZoom,
           bearing: _currentHeading,
-          tilt: 60.0, // Inclinação da câmera
+          tilt: 0.0, // 🔥 Remove a inclinação 3D
         ),
       ),
     );
@@ -168,13 +169,19 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
 
   /// 🔥 Carrega a rota (Polyline) no mapa
   void _loadPolylineRota() {
+    if (widget.polylineRota.isEmpty)
+      return; // Se a lista estiver vazia, sai da função.
+
+    // 🔥 Converte a lista de LatLng do FlutterFlow para LatLng do Google Maps
+    List<gmaps.LatLng> convertedPoints = widget.polylineRota
+        .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
+        .toList();
+
     setState(() {
       _polylines = {
         gmaps.Polyline(
           polylineId: const gmaps.PolylineId("polyline_rota"),
-          points: widget.polylineRota
-              .map((p) => gmaps.LatLng(p.latitude, p.longitude))
-              .toList(), // 🔥 Conversão necessária
+          points: convertedPoints, // 🔥 Usa os dados já convertidos
           color: widget.routeColor,
           width: 5,
         ),
@@ -182,7 +189,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// 🔥 Adiciona os marcadores ao mapa, convertendo LatLng do FlutterFlow para LatLng do Google Maps
+  /// 🔥 Adiciona os marcadores ao mapa
   Set<gmaps.Marker> _buildMarkers() {
     if (!widget.showMarkers) return {};
 
@@ -204,9 +211,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           child: gmaps.GoogleMap(
             onMapCreated: (controller) {
               _mapController = controller;
-              _loadPolylineRota(); // 🔥 Agora a Polyline será carregada corretamente
+              _loadPolylineRota(); // 🔥 Garante que a Polyline é carregada
               if (_currentPosition != null) {
-                Future.delayed(const Duration(milliseconds: 500), () {
+                Future.delayed(Duration(milliseconds: 500), () {
                   _mapController!.animateCamera(
                     gmaps.CameraUpdate.newCameraPosition(
                       gmaps.CameraPosition(
@@ -220,11 +227,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               }
             },
             initialCameraPosition: gmaps.CameraPosition(
-              target: _currentPosition ?? const gmaps.LatLng(0.0, 0.0),
+              target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
               zoom: widget.initialZoom,
             ),
             markers: _buildMarkers().union(_markers),
-            polylines: _polylines,
+            polylines: _polylines, // 🔥 Agora exibe a Polyline
             myLocationEnabled: false,
             compassEnabled: true,
             trafficEnabled: false,

@@ -123,13 +123,13 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           child: custom_widgets.GoogleMapsLiveRoute(
                             width: double.infinity,
                             height: 700.0,
-                            updateIntervalSeconds: 2,
-                            minDistanceFilter: 3.0,
+                            updateIntervalSeconds: 1,
+                            minDistanceFilter: 10.0,
                             routeColor: FlutterFlowTheme.of(context).error,
                             showSpeed: true,
                             initialZoom: 17.0,
-                            showMarkers: true,
-                            markerType: 'Multiple',
+                            showMarkers: false,
+                            markerType: 'single',
                             initialLocation: currentUserLocationValue!,
                             markerLocations: functions.converteStringLatLng(
                                 homePageViewLocationsRowList
@@ -177,7 +177,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                   await getCurrentUserLocation(
                                       defaultLocation: LatLng(0.0, 0.0));
                               _model.instantTimer = InstantTimer.periodic(
-                                duration: Duration(milliseconds: 1000),
+                                duration: Duration(milliseconds: 2000),
                                 callback: (timer) async {
                                   currentUserLocationValue =
                                       await getCurrentUserLocation(
@@ -187,9 +187,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                     'location':
                                         currentUserLocationValue?.toString(),
                                   });
-                                  FFAppState().addToTrajetoPontos(
-                                      currentUserLocationValue!.toString());
-                                  safeSetState(() {});
                                 },
                                 startImmediately: true,
                               );
