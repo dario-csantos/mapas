@@ -136,10 +136,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                     .map((e) => e.location)
                                     .withoutNulls
                                     .toList()),
-                            trajetoPontos: homePageTrakingDriverRowList
-                                .map((e) => e.location)
-                                .withoutNulls
-                                .toList(),
                           ),
                         ),
                         Align(

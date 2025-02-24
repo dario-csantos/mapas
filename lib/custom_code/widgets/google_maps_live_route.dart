@@ -17,7 +17,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     super.key,
     this.width,
     this.height,
-    required this.initialLocation, // Posição inicial do usuário (parâmetro)
+    required this.initialLocation,
     required this.updateIntervalSeconds,
     required this.minDistanceFilter,
     required this.routeColor,
@@ -26,7 +26,6 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.showMarkers,
     required this.markerType,
     this.markerLocations = const [],
-    required this.trajetoPontos, // 🔥 Recebe lista de strings com coordenadas
   });
 
   final double? width;
@@ -38,9 +37,8 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final bool showSpeed;
   final double initialZoom;
   final bool showMarkers;
-  final String markerType; // "Single" ou "Multiple"
+  final String markerType;
   final List<LatLng> markerLocations;
-  final List<String> trajetoPontos; // 🔥 Lista de coordenadas em formato string
 
   @override
   State<GoogleMapsLiveRoute> createState() => _GoogleMapsLiveRouteState();
@@ -63,7 +61,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.initState();
     _getInitialPosition();
     _startTracking();
-    _desenharTrajeto(); // 🔥 Chama a função para desenhar o trajeto do banco
   }
 
   @override
@@ -71,41 +68,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _positionStream?.cancel();
     _updateTimer?.cancel();
     super.dispose();
-  }
-
-  /// 🔥 Converte a lista de strings em uma lista de coordenadas LatLng
-  List<gmaps.LatLng> _convertStringToLatLng(List<String> trajetoPontos) {
-    List<gmaps.LatLng> pontos = [];
-    for (String ponto in trajetoPontos) {
-      List<String> valores = ponto.split(",");
-      if (valores.length == 2) {
-        try {
-          double lat = double.parse(valores[0].trim());
-          double lng = double.parse(valores[1].trim());
-          pontos.add(gmaps.LatLng(lat, lng));
-        } catch (e) {
-          print("Erro ao converter ponto: $ponto");
-        }
-      }
-    }
-    return pontos;
-  }
-
-  /// 🔥 Função que desenha o trajeto do banco no mapa
-  void _desenharTrajeto() {
-    List<gmaps.LatLng> trajetoCoordenadas =
-        _convertStringToLatLng(widget.trajetoPontos);
-
-    setState(() {
-      _polylines = {
-        gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("trajeto_do_banco"),
-          points: trajetoCoordenadas,
-          color: widget.routeColor,
-          width: 5,
-        ),
-      };
-    });
   }
 
   /// Obtém a posição inicial com base no parâmetro initialLocation
@@ -122,7 +84,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             gmaps.CameraPosition(
               target: _currentPosition!,
               zoom: widget.initialZoom,
-              tilt: 0.0, // 🔥 Remove inclinação
+              tilt: 60.0,
             ),
           ),
         );
@@ -156,7 +118,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// Atualiza a posição do usuário no mapa e adiciona ao trajeto
+  /// Atualiza a posição do usuário, velocidade e mantém o zoom personalizado
   void _updateUserLocation(Position position) async {
     final gmaps.LatLng newPosition =
         gmaps.LatLng(position.latitude, position.longitude);
@@ -189,14 +151,14 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         ),
       };
 
-      _polylines.add(
+      _polylines = {
         gmaps.Polyline(
           polylineId: const gmaps.PolylineId("tracking_route"),
           points: _routePoints,
-          color: Colors.red,
+          color: widget.routeColor,
           width: 5,
         ),
-      );
+      };
     });
 
     _mapController!.animateCamera(
@@ -205,7 +167,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           target: newPosition,
           zoom: _currentZoom,
           bearing: _currentHeading,
-          tilt: 0.0, // 🔥 Remove inclinação 3D
+          tilt: 60.0,
         ),
       ),
     );
@@ -221,6 +183,19 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           child: gmaps.GoogleMap(
             onMapCreated: (controller) {
               _mapController = controller;
+              if (_currentPosition != null) {
+                Future.delayed(Duration(milliseconds: 500), () {
+                  _mapController!.animateCamera(
+                    gmaps.CameraUpdate.newCameraPosition(
+                      gmaps.CameraPosition(
+                        target: _currentPosition!,
+                        zoom: widget.initialZoom,
+                        bearing: _currentHeading,
+                      ),
+                    ),
+                  );
+                });
+              }
             },
             initialCameraPosition: gmaps.CameraPosition(
               target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
@@ -230,9 +205,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             polylines: _polylines,
             myLocationEnabled: false,
             compassEnabled: true,
-            trafficEnabled: true, // 🔥 Agora mostra trânsito no mapa
+            trafficEnabled: false,
           ),
         ),
+
+        // Exibição da velocidade
         if (widget.showSpeed)
           Positioned(
             top: 20,
