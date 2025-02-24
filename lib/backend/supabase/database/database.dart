@@ -21,5 +21,6 @@ export 'tables/unidades.dart';
 export 'tables/socios.dart';
 export 'tables/unidade_gestao.dart';
 export 'tables/likes.dart';
+export 'tables/view_locations.dart';
 export 'tables/profissoes.dart';
 export 'tables/view_socios_1.dart';

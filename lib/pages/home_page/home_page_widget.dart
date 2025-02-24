@@ -61,8 +61,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
       );
     }
 
-    return FutureBuilder<List<TrakingDriverRow>>(
-      future: TrakingDriverTable().queryRows(
+    return FutureBuilder<List<ViewLocationsRow>>(
+      future: ViewLocationsTable().queryRows(
         queryFn: (q) => q,
       ),
       builder: (context, snapshot) {
@@ -83,7 +83,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
             ),
           );
         }
-        List<TrakingDriverRow> homePageTrakingDriverRowList = snapshot.data!;
+        List<ViewLocationsRow> homePageViewLocationsRowList = snapshot.data!;
 
         return GestureDetector(
           onTap: () {
@@ -129,15 +129,15 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             showSpeed: true,
                             initialZoom: 17.0,
                             showMarkers: true,
-                            markerType: 'single',
+                            markerType: 'Multiple',
                             initialLocation: currentUserLocationValue!,
                             markerLocations: functions.converteStringLatLng(
-                                homePageTrakingDriverRowList
+                                homePageViewLocationsRowList
                                     .map((e) => e.location)
                                     .withoutNulls
                                     .toList()),
                             polylineRota: functions.converteStringLatLng(
-                                homePageTrakingDriverRowList
+                                homePageViewLocationsRowList
                                     .map((e) => e.location)
                                     .withoutNulls
                                     .toList()),

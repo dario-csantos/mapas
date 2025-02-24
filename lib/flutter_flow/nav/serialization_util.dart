@@ -237,6 +237,8 @@ dynamic deserializeParam<T>(
             return UnidadeGestaoRow(data);
           case LikesRow:
             return LikesRow(data);
+          case ViewLocationsRow:
+            return ViewLocationsRow(data);
           case ProfissoesRow:
             return ProfissoesRow(data);
           case ViewSocios1Row:
