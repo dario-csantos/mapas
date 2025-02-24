@@ -4,6 +4,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
 import '/flutter_flow/instant_timer.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
+import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
@@ -128,12 +129,18 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             showSpeed: true,
                             initialZoom: 17.0,
                             showMarkers: true,
-                            markerType: 'multiple',
+                            markerType: 'single',
                             initialLocation: currentUserLocationValue!,
-                            trajetoString: homePageTrakingDriverRowList
-                                .map((e) => e.location)
-                                .withoutNulls
-                                .toList(),
+                            markerLocations: functions.converteStringLatLng(
+                                homePageTrakingDriverRowList
+                                    .map((e) => e.location)
+                                    .withoutNulls
+                                    .toList()),
+                            polylineRota: functions.converteStringLatLng(
+                                homePageTrakingDriverRowList
+                                    .map((e) => e.location)
+                                    .withoutNulls
+                                    .toList()),
                           ),
                         ),
                         Align(

@@ -25,7 +25,8 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.initialZoom,
     required this.showMarkers,
     required this.markerType,
-    required this.trajetoString, // 🔥 Recebe a lista de coordenadas em string
+    this.markerLocations = const [],
+    this.polylineRota = const [], // 🔥 Novo parâmetro para a rota
   });
 
   final double? width;
@@ -38,7 +39,8 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final double initialZoom;
   final bool showMarkers;
   final String markerType;
-  final List<String> trajetoString; // 🔥 Lista de strings com coordenadas
+  final List<LatLng> markerLocations; // 🔥 Lista de marcadores
+  final List<LatLng> polylineRota; // 🔥 Lista de pontos para desenhar a rota
 
   @override
   State<GoogleMapsLiveRoute> createState() => _GoogleMapsLiveRouteState();
@@ -61,7 +63,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.initState();
     _getInitialPosition();
     _startTracking();
-    _loadRouteFromString(); // 🔥 Converte string em LatLng e desenha a linha
   }
 
   @override
@@ -71,34 +72,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.dispose();
   }
 
-  /// 🔥 Converte as strings de coordenadas para gmaps.LatLng
-  void _loadRouteFromString() {
-    _routePoints.clear();
-
-    for (String coord in widget.trajetoString) {
-      List<String> latLng = coord.split(",");
-      if (latLng.length == 2) {
-        double? lat = double.tryParse(latLng[0]);
-        double? lng = double.tryParse(latLng[1]);
-
-        if (lat != null && lng != null) {
-          _routePoints.add(gmaps.LatLng(lat, lng));
-        }
-      }
-    }
-
-    setState(() {
-      _polylines = {
-        gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("tracking_route"),
-          points: _routePoints,
-          color: widget.routeColor,
-          width: 5,
-        ),
-      };
-    });
-  }
-
   /// Obtém a posição inicial com base no parâmetro initialLocation
   Future<void> _getInitialPosition() async {
     setState(() {
@@ -106,14 +79,14 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           widget.initialLocation.latitude, widget.initialLocation.longitude);
     });
 
-    Future.delayed(Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (_mapController != null) {
         _mapController!.animateCamera(
           gmaps.CameraUpdate.newCameraPosition(
             gmaps.CameraPosition(
               target: _currentPosition!,
               zoom: widget.initialZoom,
-              tilt: 60.0,
+              tilt: 60.0, // Inclinação da câmera
             ),
           ),
         );
@@ -131,7 +104,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
 
     _positionStream = Geolocator.getPositionStream(
-      locationSettings: LocationSettings(
+      locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.best,
         distanceFilter: 1,
       ),
@@ -171,12 +144,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentHeading = heading;
       _routePoints.add(newPosition);
 
-      _polylines = {
-        gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("tracking_route"),
-          points: _routePoints,
-          color: widget.routeColor,
-          width: 5,
+      _markers = {
+        gmaps.Marker(
+          markerId: const gmaps.MarkerId("user_position"),
+          position: newPosition,
+          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+              gmaps.BitmapDescriptor.hueBlue),
         ),
       };
     });
@@ -187,10 +160,38 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           target: newPosition,
           zoom: _currentZoom,
           bearing: _currentHeading,
-          tilt: 60.0,
+          tilt: 60.0, // Inclinação da câmera
         ),
       ),
     );
+  }
+
+  /// 🔥 Carrega a rota (Polyline) no mapa
+  void _loadPolylineRota() {
+    setState(() {
+      _polylines = {
+        gmaps.Polyline(
+          polylineId: const gmaps.PolylineId("polyline_rota"),
+          points: widget.polylineRota
+              .map((p) => gmaps.LatLng(p.latitude, p.longitude))
+              .toList(), // 🔥 Conversão necessária
+          color: widget.routeColor,
+          width: 5,
+        ),
+      };
+    });
+  }
+
+  /// 🔥 Adiciona os marcadores ao mapa, convertendo LatLng do FlutterFlow para LatLng do Google Maps
+  Set<gmaps.Marker> _buildMarkers() {
+    if (!widget.showMarkers) return {};
+
+    return widget.markerLocations
+        .map((location) => gmaps.Marker(
+              markerId: gmaps.MarkerId(location.toString()),
+              position: gmaps.LatLng(location.latitude, location.longitude),
+            ))
+        .toSet();
   }
 
   @override
@@ -203,8 +204,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           child: gmaps.GoogleMap(
             onMapCreated: (controller) {
               _mapController = controller;
+              _loadPolylineRota(); // 🔥 Agora a Polyline será carregada corretamente
               if (_currentPosition != null) {
-                Future.delayed(Duration(milliseconds: 500), () {
+                Future.delayed(const Duration(milliseconds: 500), () {
                   _mapController!.animateCamera(
                     gmaps.CameraUpdate.newCameraPosition(
                       gmaps.CameraPosition(
@@ -218,34 +220,16 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               }
             },
             initialCameraPosition: gmaps.CameraPosition(
-              target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
+              target: _currentPosition ?? const gmaps.LatLng(0.0, 0.0),
               zoom: widget.initialZoom,
             ),
-            markers: _markers,
-            polylines: _polylines, // 🔥 Agora desenha a Polyline
+            markers: _buildMarkers().union(_markers),
+            polylines: _polylines,
             myLocationEnabled: false,
             compassEnabled: true,
             trafficEnabled: false,
           ),
         ),
-
-        // Exibição da velocidade
-        if (widget.showSpeed)
-          Positioned(
-            top: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                "${_currentSpeed.toStringAsFixed(1)} km/h",
-                style: const TextStyle(color: Colors.white, fontSize: 18),
-              ),
-            ),
-          ),
       ],
     );
   }
