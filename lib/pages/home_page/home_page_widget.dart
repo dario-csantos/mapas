@@ -6,6 +6,7 @@ import '/flutter_flow/instant_timer.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
@@ -30,8 +31,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
-    getCurrentUserLocation(defaultLocation: LatLng(0.0, 0.0), cached: true)
-        .then((loc) => safeSetState(() => currentUserLocationValue = loc));
     _model.switchTransitoValue = false;
     _model.switchRoutesSaveValue = false;
     _model.switchMarkersValue = false;
@@ -48,22 +47,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (currentUserLocationValue == null) {
-      return Container(
-        color: FlutterFlowTheme.of(context).primaryBackground,
-        child: Center(
-          child: SizedBox(
-            width: 50.0,
-            height: 50.0,
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                FlutterFlowTheme.of(context).primary,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    context.watch<FFAppState>();
 
     return FutureBuilder<List<ViewLocationsRow>>(
       future: ViewLocationsTable().queryRows(
@@ -132,13 +116,13 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             userRouteColor: Color(0xFF220CEC),
                             routeColor: FlutterFlowTheme.of(context).error,
                             showSpeed: true,
-                            showTraffic: true,
+                            showTraffic: _model.switchTransitoValue!,
                             initialZoom: 14.0,
                             mapTilt: 60.0,
-                            showMarkers: true,
+                            showMarkers: _model.switchMarkersValue!,
                             showUserRoute: true,
                             showSavedRoute: true,
-                            initialLocation: currentUserLocationValue!,
+                            initialLocation: FFAppState().CoordCasa!,
                             markerLocations: functions.converteStringLatLng(
                                 homePageViewLocationsRowList
                                     .where((e) => e.customers == true)
