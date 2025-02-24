@@ -123,12 +123,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           child: custom_widgets.GoogleMapsLiveRoute(
                             width: double.infinity,
                             height: 700.0,
-                            updateIntervalSeconds: 1,
+                            updateIntervalSeconds: 2,
                             minDistanceFilter: 3.0,
                             routeColor: FlutterFlowTheme.of(context).error,
                             showSpeed: true,
                             initialZoom: 17.0,
-                            showMarkers: false,
+                            showMarkers: true,
                             markerType: 'single',
                             initialLocation: currentUserLocationValue!,
                             markerLocations: functions.converteStringLatLng(
@@ -136,6 +136,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                     .map((e) => e.location)
                                     .withoutNulls
                                     .toList()),
+                            trajetoPontos: homePageTrakingDriverRowList
+                                .map((e) => e.location)
+                                .withoutNulls
+                                .toList(),
                           ),
                         ),
                         Align(
