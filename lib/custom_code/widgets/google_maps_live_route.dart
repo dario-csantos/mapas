@@ -24,10 +24,10 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.minDistanceFilter,
     required this.routeColor,
     required this.showSpeed,
-    required this.initialZoom,
     required this.showMarkers,
-    required this.showRecordedRoute, // 🔥 NOVO: Controla exibição da rota gravada
-    required this.showUserRoute, // 🔥 NOVO: Controla exibição da rota do usuário
+    required this.showRecordedRoute,
+    required this.showUserRoute,
+    required this.initialZoom,
     required this.markerType,
     this.markerLocations = const [],
     this.polylineRota = const [],
@@ -41,8 +41,8 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final Color routeColor;
   final bool showSpeed;
   final bool showMarkers;
-  final bool showRecordedRoute; // 🔥 NOVO PARAMETRO
-  final bool showUserRoute; // 🔥 NOVO PARAMETRO
+  final bool showRecordedRoute;
+  final bool showUserRoute;
   final double initialZoom;
   final String markerType;
   final List<LatLng> markerLocations;
@@ -93,7 +93,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             gmaps.CameraPosition(
               target: _currentPosition!,
               zoom: widget.initialZoom,
-              tilt: 0.0, // 🔥 Remove inclinação 3D
+              tilt: 0.0,
             ),
           ),
         );
@@ -160,7 +160,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         ),
       };
 
-      _loadPolylineRota(); // 🔥 Atualiza a polyline quando o usuário se move
+      _loadPolylineRota();
     });
 
     _mapController!.animateCamera(
@@ -199,7 +199,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         gmaps.Polyline(
           polylineId: const gmaps.PolylineId("user_route"),
           points: _routePoints,
-          color: Colors.blue, // 🔥 A rota do usuário será azul
+          color: Colors.blue,
           width: 4,
         ),
       );
@@ -210,7 +210,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// 🔥 Adiciona os marcadores ao mapa
+  /// 🔥 Adiciona apenas os marcadores definidos no parâmetro markerLocations
   Set<gmaps.Marker> _buildMarkers() {
     if (!widget.showMarkers) return {};
 
@@ -245,6 +245,22 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             trafficEnabled: false,
           ),
         ),
+        if (widget.showSpeed)
+          Positioned(
+            top: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                "${_currentSpeed.toStringAsFixed(1)} km/h",
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ),
       ],
     );
   }

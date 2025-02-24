@@ -63,7 +63,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
     return FutureBuilder<List<ViewLocationsRow>>(
       future: ViewLocationsTable().queryRows(
-        queryFn: (q) => q,
+        queryFn: (q) => q.eqOrNull(
+          'driver_status',
+          true,
+        ),
       ),
       builder: (context, snapshot) {
         // Customize what your widget looks like when it's loading.
@@ -94,10 +97,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
             key: scaffoldKey,
             backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
             appBar: AppBar(
-              backgroundColor: FlutterFlowTheme.of(context).secondary,
+              backgroundColor: FlutterFlowTheme.of(context).error,
               automaticallyImplyLeading: false,
               title: Text(
-                'GPS MCBDA 1.0.3',
+                'GPS MCBDA 1.0.7',
                 style: FlutterFlowTheme.of(context).headlineMedium.override(
                       fontFamily: 'Inter Tight',
                       color: Colors.white,
@@ -117,33 +120,61 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                   Expanded(
                     child: Stack(
                       children: [
-                        Container(
-                          width: double.infinity,
-                          height: 700.0,
-                          child: custom_widgets.GoogleMapsLiveRoute(
-                            width: double.infinity,
-                            height: 700.0,
-                            updateIntervalSeconds: 1,
-                            minDistanceFilter: 3.0,
-                            routeColor: FlutterFlowTheme.of(context).error,
-                            showSpeed: true,
-                            initialZoom: 17.0,
-                            showMarkers: false,
-                            markerType: 'single',
-                            initialLocation: currentUserLocationValue!,
-                            markerLocations: functions.converteStringLatLng(
-                                homePageViewLocationsRowList
-                                    .map((e) => e.location)
-                                    .withoutNulls
-                                    .toList()),
-                            polylineRota: functions.converteStringLatLng(
-                                homePageViewLocationsRowList
-                                    .map((e) => e.location)
-                                    .withoutNulls
-                                    .toList()),
-                            showRecordedRoute: true,
-                            showUserRoute: true,
+                        FutureBuilder<List<TrakingDriverRow>>(
+                          future: TrakingDriverTable().queryRows(
+                            queryFn: (q) => q.eqOrNull(
+                              'castomer',
+                              true,
+                            ),
                           ),
+                          builder: (context, snapshot) {
+                            // Customize what your widget looks like when it's loading.
+                            if (!snapshot.hasData) {
+                              return Center(
+                                child: SizedBox(
+                                  width: 50.0,
+                                  height: 50.0,
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      FlutterFlowTheme.of(context).primary,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            List<TrakingDriverRow>
+                                googleMapsLiveRouteTrakingDriverRowList =
+                                snapshot.data!;
+
+                            return Container(
+                              width: double.infinity,
+                              height: 700.0,
+                              child: custom_widgets.GoogleMapsLiveRoute(
+                                width: double.infinity,
+                                height: 700.0,
+                                updateIntervalSeconds: 1,
+                                minDistanceFilter: 3.0,
+                                routeColor: FlutterFlowTheme.of(context).error,
+                                showSpeed: true,
+                                initialZoom: 17.0,
+                                showMarkers: true,
+                                markerType: 'single',
+                                initialLocation: currentUserLocationValue!,
+                                markerLocations: functions.converteStringLatLng(
+                                    googleMapsLiveRouteTrakingDriverRowList
+                                        .map((e) => e.location)
+                                        .withoutNulls
+                                        .toList()),
+                                polylineRota: functions.converteStringLatLng(
+                                    homePageViewLocationsRowList
+                                        .map((e) => e.location)
+                                        .withoutNulls
+                                        .toList()),
+                                showRecordedRoute: true,
+                                showUserRoute: true,
+                              ),
+                            );
+                          },
                         ),
                         Align(
                           alignment: AlignmentDirectional(-0.95, 0.91),
@@ -188,6 +219,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                       await TrakingDriverTable().insert({
                                     'location':
                                         currentUserLocationValue?.toString(),
+                                    'castomer': false,
+                                    'driver': true,
                                   });
                                 },
                                 startImmediately: true,
