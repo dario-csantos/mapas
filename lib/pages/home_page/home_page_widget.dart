@@ -32,10 +32,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
     getCurrentUserLocation(defaultLocation: LatLng(0.0, 0.0), cached: true)
         .then((loc) => safeSetState(() => currentUserLocationValue = loc));
-    _model.switchValue1 = false;
-    _model.switchValue2 = false;
-    _model.switchValue3 = false;
-    _model.switchValue4 = false;
     WidgetsBinding.instance.addPostFrameCallback((_) => safeSetState(() {}));
   }
 
@@ -156,17 +152,17 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               child: custom_widgets.GoogleMapsLiveRoute(
                                 width: double.infinity,
                                 height: 700.0,
-                                showUserRoute: _model.switchValue4!,
+                                showUserRoute: true,
                                 updateIntervalSeconds: 1,
                                 minDistanceFilter: 3.0,
                                 userRouteColor: Color(0xFF2914E5),
                                 routeColor: FlutterFlowTheme.of(context).error,
                                 showSpeed: true,
-                                showTraffic: _model.switchValue1!,
+                                showTraffic: true,
                                 initialZoom: 17.0,
                                 mapTilt: 0.0,
-                                showMarkers: _model.switchValue3!,
-                                showSavedRoute: _model.switchValue3!,
+                                showMarkers: false,
+                                showSavedRoute: true,
                                 initialLocation: currentUserLocationValue!,
                                 markerLocations: functions.converteStringLatLng(
                                     googleMapsLiveRouteTrakingDriverRowList
@@ -268,31 +264,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [
-                                    Align(
-                                      alignment:
-                                          AlignmentDirectional(-0.9, 0.43),
-                                      child: Switch.adaptive(
-                                        value: _model.switchValue1!,
-                                        onChanged: (newValue) async {
-                                          safeSetState(() =>
-                                              _model.switchValue1 = newValue);
-                                        },
-                                        activeColor:
-                                            FlutterFlowTheme.of(context)
-                                                .accent1,
-                                        activeTrackColor:
-                                            FlutterFlowTheme.of(context)
-                                                .secondary,
-                                        inactiveTrackColor:
-                                            FlutterFlowTheme.of(context)
-                                                .alternate,
-                                        inactiveThumbColor:
-                                            FlutterFlowTheme.of(context)
-                                                .secondaryBackground,
-                                      ),
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
@@ -325,35 +297,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [
-                                    Align(
-                                      alignment:
-                                          AlignmentDirectional(-0.9, 0.43),
-                                      child: Switch.adaptive(
-                                        value: _model.switchValue2!,
-                                        onChanged: (newValue) async {
-                                          safeSetState(() =>
-                                              _model.switchValue2 = newValue);
-                                          if (newValue) {
-                                            _model.showRouteSave = true;
-                                            safeSetState(() {});
-                                          }
-                                        },
-                                        activeColor:
-                                            FlutterFlowTheme.of(context)
-                                                .accent1,
-                                        activeTrackColor:
-                                            FlutterFlowTheme.of(context)
-                                                .secondary,
-                                        inactiveTrackColor:
-                                            FlutterFlowTheme.of(context)
-                                                .alternate,
-                                        inactiveThumbColor:
-                                            FlutterFlowTheme.of(context)
-                                                .secondaryBackground,
-                                      ),
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
@@ -386,31 +330,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [
-                                    Align(
-                                      alignment:
-                                          AlignmentDirectional(-0.9, 0.43),
-                                      child: Switch.adaptive(
-                                        value: _model.switchValue3!,
-                                        onChanged: (newValue) async {
-                                          safeSetState(() =>
-                                              _model.switchValue3 = newValue);
-                                        },
-                                        activeColor:
-                                            FlutterFlowTheme.of(context)
-                                                .accent1,
-                                        activeTrackColor:
-                                            FlutterFlowTheme.of(context)
-                                                .secondary,
-                                        inactiveTrackColor:
-                                            FlutterFlowTheme.of(context)
-                                                .alternate,
-                                        inactiveThumbColor:
-                                            FlutterFlowTheme.of(context)
-                                                .secondaryBackground,
-                                      ),
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
@@ -443,31 +363,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [
-                                    Align(
-                                      alignment:
-                                          AlignmentDirectional(-0.9, 0.43),
-                                      child: Switch.adaptive(
-                                        value: _model.switchValue4!,
-                                        onChanged: (newValue) async {
-                                          safeSetState(() =>
-                                              _model.switchValue4 = newValue);
-                                        },
-                                        activeColor:
-                                            FlutterFlowTheme.of(context)
-                                                .accent1,
-                                        activeTrackColor:
-                                            FlutterFlowTheme.of(context)
-                                                .secondary,
-                                        inactiveTrackColor:
-                                            FlutterFlowTheme.of(context)
-                                                .alternate,
-                                        inactiveThumbColor:
-                                            FlutterFlowTheme.of(context)
-                                                .secondaryBackground,
-                                      ),
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
@@ -486,30 +382,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                        FFButtonWidget(
-                          onPressed: () async {
-                            _model.showRouteSave = true;
-                            safeSetState(() {});
-                          },
-                          text: 'Routes',
-                          options: FFButtonOptions(
-                            height: 40.0,
-                            padding: EdgeInsetsDirectional.fromSTEB(
-                                16.0, 0.0, 16.0, 0.0),
-                            iconPadding: EdgeInsetsDirectional.fromSTEB(
-                                0.0, 0.0, 0.0, 0.0),
-                            color: FlutterFlowTheme.of(context).primary,
-                            textStyle: FlutterFlowTheme.of(context)
-                                .titleSmall
-                                .override(
-                                  fontFamily: 'Inter Tight',
-                                  color: Colors.white,
-                                  letterSpacing: 0.0,
-                                ),
-                            elevation: 0.0,
-                            borderRadius: BorderRadius.circular(8.0),
                           ),
                         ),
                       ],
