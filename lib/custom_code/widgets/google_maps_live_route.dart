@@ -28,7 +28,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.showTraffic,
     required this.initialZoom,
     required this.mapTilt,
-    required this.showMarkers,
+    required this.showMarkers, // 🔥 Parâmetro corrigido
     required this.showUserRoute,
     required this.showSavedRoute,
     this.markerLocations = const [],
@@ -46,7 +46,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final bool showTraffic;
   final double initialZoom;
   final double mapTilt;
-  final bool showMarkers;
+  final bool showMarkers; // 🔥 Garantir que ele realmente funcione
   final bool showUserRoute;
   final bool showSavedRoute;
   final List<LatLng> markerLocations;
@@ -67,9 +67,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   double _currentSpeed = 0.0;
   double _currentHeading = 0.0;
   double _currentZoom = 16.0;
-
-  // 🔥 Chave única para forçar rebuild do mapa
-  Key _mapKey = UniqueKey();
 
   @override
   void initState() {
@@ -155,17 +152,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentHeading = heading;
       _userRoutePoints.add(newPosition);
 
-      _markers.removeWhere((m) => m.markerId.value == "user_position");
-
-      // 🔥 O usuário SEMPRE aparece no mapa
-      _markers.add(
-        gmaps.Marker(
-          markerId: const gmaps.MarkerId("user_position"),
-          position: newPosition,
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-              gmaps.BitmapDescriptor.hueBlue),
-        ),
-      );
+      _markers.clear(); // 🔥 Limpa marcadores antigos
+      if (widget.showMarkers) {
+        _markers.add(
+          gmaps.Marker(
+            markerId: const gmaps.MarkerId("user_position"),
+            position: newPosition,
+            icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+                gmaps.BitmapDescriptor.hueBlue),
+          ),
+        );
+      }
 
       _updateUserPolyline();
     });
@@ -199,33 +196,28 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   }
 
   void _loadPolylineRota() {
-    print(
-        "🔄 Atualizando rota gravada, showSavedRoute: ${widget.showSavedRoute}");
+    if (!widget.showSavedRoute) return;
+
+    List<gmaps.LatLng> convertedPoints = widget.polylineRota
+        .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
+        .toList();
 
     setState(() {
       _polylines.removeWhere((poly) => poly.polylineId.value == "saved_route");
-
-      if (widget.showSavedRoute) {
-        List<gmaps.LatLng> convertedPoints = widget.polylineRota
-            .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
-            .toList();
-
-        _polylines.add(
-          gmaps.Polyline(
-            polylineId: const gmaps.PolylineId("saved_route"),
-            points: convertedPoints,
-            color: widget.routeColor,
-            width: 5,
-          ),
-        );
-      }
-
-      _mapKey = UniqueKey(); // 🔥 Força o rebuild do mapa
+      _polylines.add(
+        gmaps.Polyline(
+          polylineId: const gmaps.PolylineId("saved_route"),
+          points: convertedPoints,
+          color: widget.routeColor,
+          width: 5,
+        ),
+      );
     });
   }
 
   Set<gmaps.Marker> _buildMarkers() {
     if (!widget.showMarkers) return {};
+
     return widget.markerLocations
         .map((location) => gmaps.Marker(
               markerId: gmaps.MarkerId(location.toString()),
@@ -239,7 +231,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     return Stack(
       children: [
         gmaps.GoogleMap(
-          key: _mapKey, // 🔥 Garante que o mapa se reconstrua
           onMapCreated: (controller) {
             _mapController = controller;
             _loadPolylineRota();
@@ -254,6 +245,22 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           compassEnabled: true,
           trafficEnabled: widget.showTraffic,
         ),
+        if (widget.showSpeed)
+          Positioned(
+            top: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                "${_currentSpeed.toStringAsFixed(1)} km/h",
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ),
       ],
     );
   }
