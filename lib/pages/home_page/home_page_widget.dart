@@ -124,11 +124,13 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             width: double.infinity,
                             height: 700.0,
                             updateIntervalSeconds: 1,
-                            minDistanceFilter: 10.0,
+                            minDistanceFilter: 3.0,
                             routeColor: FlutterFlowTheme.of(context).error,
+                            userRouteColor:
+                                FlutterFlowTheme.of(context).primary,
                             showSpeed: true,
                             initialZoom: 17.0,
-                            showMarkers: false,
+                            showMarkers: true,
                             markerType: 'single',
                             initialLocation: currentUserLocationValue!,
                             markerLocations: functions.converteStringLatLng(
@@ -144,19 +146,19 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           ),
                         ),
                         Align(
-                          alignment: AlignmentDirectional(-0.97, 0.71),
+                          alignment: AlignmentDirectional(-0.95, 0.91),
                           child: FFButtonWidget(
                             onPressed: () async {
                               _model.instantTimer?.cancel();
                             },
-                            text: 'Stop',
+                            text: 'Parar Rastrear',
                             options: FFButtonOptions(
-                              height: 40.0,
+                              height: 57.59,
                               padding: EdgeInsetsDirectional.fromSTEB(
                                   16.0, 0.0, 16.0, 0.0),
                               iconPadding: EdgeInsetsDirectional.fromSTEB(
                                   0.0, 0.0, 0.0, 0.0),
-                              color: FlutterFlowTheme.of(context).primary,
+                              color: FlutterFlowTheme.of(context).tertiary,
                               textStyle: FlutterFlowTheme.of(context)
                                   .titleSmall
                                   .override(
@@ -170,7 +172,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           ),
                         ),
                         Align(
-                          alignment: AlignmentDirectional(-0.99, 0.58),
+                          alignment: AlignmentDirectional(-0.96, 0.73),
                           child: FFButtonWidget(
                             onPressed: () async {
                               currentUserLocationValue =
@@ -193,14 +195,14 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
                               safeSetState(() {});
                             },
-                            text: 'Start',
+                            text: 'Iniciar Rastrear',
                             options: FFButtonOptions(
-                              height: 40.0,
+                              height: 51.89,
                               padding: EdgeInsetsDirectional.fromSTEB(
                                   16.0, 0.0, 16.0, 0.0),
                               iconPadding: EdgeInsetsDirectional.fromSTEB(
                                   0.0, 0.0, 0.0, 0.0),
-                              color: FlutterFlowTheme.of(context).primary,
+                              color: Color(0xFF056B5F),
                               textStyle: FlutterFlowTheme.of(context)
                                   .titleSmall
                                   .override(
