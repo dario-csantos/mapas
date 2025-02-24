@@ -5,11 +5,31 @@ import 'home_page_widget.dart' show HomePageWidget;
 import 'package:flutter/material.dart';
 
 class HomePageModel extends FlutterFlowModel<HomePageWidget> {
+  ///  Local state fields for this page.
+
+  bool showTransito = false;
+
+  bool? showSpeed = false;
+
+  bool showRouteUser = false;
+
+  bool showRouteSave = false;
+
+  bool showLocations = false;
+
   ///  State fields for stateful widgets in this page.
 
   InstantTimer? instantTimer;
   // Stores action output result for [Backend Call - Insert Row] action in Button widget.
   TrakingDriverRow? valueInsert;
+  // State field(s) for Switch widget.
+  bool? switchValue1;
+  // State field(s) for Switch widget.
+  bool? switchValue2;
+  // State field(s) for Switch widget.
+  bool? switchValue3;
+  // State field(s) for Switch widget.
+  bool? switchValue4;
 
   @override
   void initState(BuildContext context) {}
