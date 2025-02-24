@@ -166,7 +166,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 initialZoom: 17.0,
                                 mapTilt: 0.0,
                                 showMarkers: _model.switchValue3!,
-                                showSavedRoute: _model.switchValue2!,
+                                showSavedRoute: true,
                                 initialLocation: currentUserLocationValue!,
                                 markerLocations: functions.converteStringLatLng(
                                     googleMapsLiveRouteTrakingDriverRowList
