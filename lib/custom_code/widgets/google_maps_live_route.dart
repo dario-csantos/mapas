@@ -25,7 +25,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.initialZoom,
     required this.showMarkers,
     required this.markerType,
-    this.markerLocations = const [],
+    required this.trajetoString, // 🔥 Recebe a lista de coordenadas em string
   });
 
   final double? width;
@@ -38,7 +38,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final double initialZoom;
   final bool showMarkers;
   final String markerType;
-  final List<LatLng> markerLocations;
+  final List<String> trajetoString; // 🔥 Lista de strings com coordenadas
 
   @override
   State<GoogleMapsLiveRoute> createState() => _GoogleMapsLiveRouteState();
@@ -61,6 +61,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.initState();
     _getInitialPosition();
     _startTracking();
+    _loadRouteFromString(); // 🔥 Converte string em LatLng e desenha a linha
   }
 
   @override
@@ -68,6 +69,34 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _positionStream?.cancel();
     _updateTimer?.cancel();
     super.dispose();
+  }
+
+  /// 🔥 Converte as strings de coordenadas para gmaps.LatLng
+  void _loadRouteFromString() {
+    _routePoints.clear();
+
+    for (String coord in widget.trajetoString) {
+      List<String> latLng = coord.split(",");
+      if (latLng.length == 2) {
+        double? lat = double.tryParse(latLng[0]);
+        double? lng = double.tryParse(latLng[1]);
+
+        if (lat != null && lng != null) {
+          _routePoints.add(gmaps.LatLng(lat, lng));
+        }
+      }
+    }
+
+    setState(() {
+      _polylines = {
+        gmaps.Polyline(
+          polylineId: const gmaps.PolylineId("tracking_route"),
+          points: _routePoints,
+          color: widget.routeColor,
+          width: 5,
+        ),
+      };
+    });
   }
 
   /// Obtém a posição inicial com base no parâmetro initialLocation
@@ -142,15 +171,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentHeading = heading;
       _routePoints.add(newPosition);
 
-      _markers = {
-        gmaps.Marker(
-          markerId: const gmaps.MarkerId("user_position"),
-          position: newPosition,
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-              gmaps.BitmapDescriptor.hueBlue),
-        ),
-      };
-
       _polylines = {
         gmaps.Polyline(
           polylineId: const gmaps.PolylineId("tracking_route"),
@@ -202,7 +222,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               zoom: widget.initialZoom,
             ),
             markers: _markers,
-            polylines: _polylines,
+            polylines: _polylines, // 🔥 Agora desenha a Polyline
             myLocationEnabled: false,
             compassEnabled: true,
             trafficEnabled: false,
