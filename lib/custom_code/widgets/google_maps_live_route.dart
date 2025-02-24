@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
 import 'index.dart'; // Imports other custom widgets
-
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -28,7 +27,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.showTraffic,
     required this.initialZoom,
     required this.mapTilt,
-    required this.showMarkers, // 🔥 Parâmetro corrigido
+    required this.showMarkers,
     required this.showUserRoute,
     required this.showSavedRoute,
     this.markerLocations = const [],
@@ -46,7 +45,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final bool showTraffic;
   final double initialZoom;
   final double mapTilt;
-  final bool showMarkers; // 🔥 Garantir que ele realmente funcione
+  final bool showMarkers;
   final bool showUserRoute;
   final bool showSavedRoute;
   final List<LatLng> markerLocations;
@@ -60,6 +59,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   gmaps.GoogleMapController? _mapController;
   Set<gmaps.Polyline> _polylines = {};
   Set<gmaps.Marker> _markers = {};
+  gmaps.Marker? _userMarker; // 🔥 Mantém sempre o marcador do usuário visível
   List<gmaps.LatLng> _userRoutePoints = [];
   StreamSubscription<Position>? _positionStream;
   Timer? _updateTimer;
@@ -87,6 +87,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     setState(() {
       _currentPosition = gmaps.LatLng(
           widget.initialLocation.latitude, widget.initialLocation.longitude);
+      _updateUserMarker(); // 🔥 Atualiza o marcador do usuário na inicialização
     });
 
     Future.delayed(Duration(milliseconds: 500), () {
@@ -152,17 +153,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentHeading = heading;
       _userRoutePoints.add(newPosition);
 
-      _markers.clear(); // 🔥 Limpa marcadores antigos
-      if (widget.showMarkers) {
-        _markers.add(
-          gmaps.Marker(
-            markerId: const gmaps.MarkerId("user_position"),
-            position: newPosition,
-            icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-                gmaps.BitmapDescriptor.hueBlue),
-          ),
-        );
-      }
+      _updateUserMarker(); // 🔥 Atualiza apenas o marcador do usuário
 
       _updateUserPolyline();
     });
@@ -177,6 +168,18 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         ),
       ),
     );
+  }
+
+  /// 🔥 Mantém sempre o marcador do usuário visível
+  void _updateUserMarker() {
+    setState(() {
+      _userMarker = gmaps.Marker(
+        markerId: const gmaps.MarkerId("user_position"),
+        position: _currentPosition!,
+        icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+            gmaps.BitmapDescriptor.hueBlue),
+      );
+    });
   }
 
   void _updateUserPolyline() {
@@ -215,6 +218,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
+  /// 🔥 Exibe apenas os marcadores que foram ativados pelo parâmetro `showMarkers`
   Set<gmaps.Marker> _buildMarkers() {
     if (!widget.showMarkers) return {};
 
@@ -239,7 +243,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
             zoom: widget.initialZoom,
           ),
-          markers: _markers.union(_buildMarkers()),
+          markers: _buildMarkers()
+              .union({_userMarker!}), // 🔥 Mantém sempre o marcador do usuário
           polylines: _polylines,
           myLocationEnabled: false,
           compassEnabled: true,

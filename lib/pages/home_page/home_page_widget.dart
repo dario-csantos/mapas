@@ -6,6 +6,7 @@ import '/flutter_flow/instant_timer.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
@@ -30,8 +31,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
-    getCurrentUserLocation(defaultLocation: LatLng(0.0, 0.0), cached: true)
-        .then((loc) => safeSetState(() => currentUserLocationValue = loc));
+    _model.switchValue1 = false;
+    _model.switchValue2 = false;
+    _model.switchValue3 = false;
+    _model.switchValue4 = false;
     WidgetsBinding.instance.addPostFrameCallback((_) => safeSetState(() {}));
   }
 
@@ -44,22 +47,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (currentUserLocationValue == null) {
-      return Container(
-        color: FlutterFlowTheme.of(context).primaryBackground,
-        child: Center(
-          child: SizedBox(
-            width: 50.0,
-            height: 50.0,
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                FlutterFlowTheme.of(context).primary,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    context.watch<FFAppState>();
 
     return FutureBuilder<List<ViewLocationsRow>>(
       future: ViewLocationsTable().queryRows(
@@ -152,18 +140,18 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               child: custom_widgets.GoogleMapsLiveRoute(
                                 width: double.infinity,
                                 height: 700.0,
-                                showUserRoute: true,
+                                showUserRoute: _model.switchValue4!,
                                 updateIntervalSeconds: 1,
                                 minDistanceFilter: 3.0,
                                 userRouteColor: Color(0xFF2914E5),
                                 routeColor: FlutterFlowTheme.of(context).error,
                                 showSpeed: true,
-                                showTraffic: true,
+                                showTraffic: _model.switchValue1!,
                                 initialZoom: 17.0,
                                 mapTilt: 0.0,
-                                showMarkers: false,
-                                showSavedRoute: true,
-                                initialLocation: currentUserLocationValue!,
+                                showMarkers: _model.switchValue3!,
+                                showSavedRoute: _model.switchValue2!,
+                                initialLocation: FFAppState().CoordCasa!,
                                 markerLocations: functions.converteStringLatLng(
                                     googleMapsLiveRouteTrakingDriverRowList
                                         .map((e) => e.location)
@@ -264,7 +252,25 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [],
+                                  children: [
+                                    Switch.adaptive(
+                                      value: _model.switchValue1!,
+                                      onChanged: (newValue) async {
+                                        safeSetState(() =>
+                                            _model.switchValue1 = newValue);
+                                      },
+                                      activeColor:
+                                          FlutterFlowTheme.of(context).primary,
+                                      activeTrackColor:
+                                          FlutterFlowTheme.of(context).primary,
+                                      inactiveTrackColor:
+                                          FlutterFlowTheme.of(context)
+                                              .alternate,
+                                      inactiveThumbColor:
+                                          FlutterFlowTheme.of(context)
+                                              .secondaryBackground,
+                                    ),
+                                  ],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
@@ -297,7 +303,25 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [],
+                                  children: [
+                                    Switch.adaptive(
+                                      value: _model.switchValue2!,
+                                      onChanged: (newValue) async {
+                                        safeSetState(() =>
+                                            _model.switchValue2 = newValue);
+                                      },
+                                      activeColor:
+                                          FlutterFlowTheme.of(context).primary,
+                                      activeTrackColor:
+                                          FlutterFlowTheme.of(context).primary,
+                                      inactiveTrackColor:
+                                          FlutterFlowTheme.of(context)
+                                              .alternate,
+                                      inactiveThumbColor:
+                                          FlutterFlowTheme.of(context)
+                                              .secondaryBackground,
+                                    ),
+                                  ],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
@@ -330,7 +354,25 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [],
+                                  children: [
+                                    Switch.adaptive(
+                                      value: _model.switchValue3!,
+                                      onChanged: (newValue) async {
+                                        safeSetState(() =>
+                                            _model.switchValue3 = newValue);
+                                      },
+                                      activeColor:
+                                          FlutterFlowTheme.of(context).primary,
+                                      activeTrackColor:
+                                          FlutterFlowTheme.of(context).primary,
+                                      inactiveTrackColor:
+                                          FlutterFlowTheme.of(context)
+                                              .alternate,
+                                      inactiveThumbColor:
+                                          FlutterFlowTheme.of(context)
+                                              .secondaryBackground,
+                                    ),
+                                  ],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
@@ -363,7 +405,25 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [],
+                                  children: [
+                                    Switch.adaptive(
+                                      value: _model.switchValue4!,
+                                      onChanged: (newValue) async {
+                                        safeSetState(() =>
+                                            _model.switchValue4 = newValue);
+                                      },
+                                      activeColor:
+                                          FlutterFlowTheme.of(context).primary,
+                                      activeTrackColor:
+                                          FlutterFlowTheme.of(context).primary,
+                                      inactiveTrackColor:
+                                          FlutterFlowTheme.of(context)
+                                              .alternate,
+                                      inactiveThumbColor:
+                                          FlutterFlowTheme.of(context)
+                                              .secondaryBackground,
+                                    ),
+                                  ],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,

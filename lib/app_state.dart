@@ -22,38 +22,15 @@ class FFAppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<String> _trajetoPontos = [];
-  List<String> get trajetoPontos => _trajetoPontos;
-  set trajetoPontos(List<String> value) {
-    _trajetoPontos = value;
-  }
-
-  void addToTrajetoPontos(String value) {
-    trajetoPontos.add(value);
-  }
-
-  void removeFromTrajetoPontos(String value) {
-    trajetoPontos.remove(value);
-  }
-
-  void removeAtIndexFromTrajetoPontos(int index) {
-    trajetoPontos.removeAt(index);
-  }
-
-  void updateTrajetoPontosAtIndex(
-    int index,
-    String Function(String) updateFn,
-  ) {
-    trajetoPontos[index] = updateFn(_trajetoPontos[index]);
-  }
-
-  void insertAtIndexInTrajetoPontos(int index, String value) {
-    trajetoPontos.insert(index, value);
-  }
-
   LatLng? _locations2 = LatLng(37.13617, -8.5376926);
   LatLng? get locations2 => _locations2;
   set locations2(LatLng? value) {
     _locations2 = value;
+  }
+
+  LatLng? _CoordCasa = LatLng(37.13406299999999, -8.5443944);
+  LatLng? get CoordCasa => _CoordCasa;
+  set CoordCasa(LatLng? value) {
+    _CoordCasa = value;
   }
 }

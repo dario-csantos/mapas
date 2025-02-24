@@ -17,11 +17,21 @@ class HomePageModel extends FlutterFlowModel<HomePageWidget> {
 
   bool showLocations = false;
 
+  LatLng? casa;
+
   ///  State fields for stateful widgets in this page.
 
   InstantTimer? instantTimer;
   // Stores action output result for [Backend Call - Insert Row] action in Button widget.
   TrakingDriverRow? valueInsert;
+  // State field(s) for Switch widget.
+  bool? switchValue1;
+  // State field(s) for Switch widget.
+  bool? switchValue2;
+  // State field(s) for Switch widget.
+  bool? switchValue3;
+  // State field(s) for Switch widget.
+  bool? switchValue4;
 
   @override
   void initState(BuildContext context) {}
