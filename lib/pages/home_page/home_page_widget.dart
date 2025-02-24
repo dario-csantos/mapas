@@ -157,8 +157,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 routeColor: FlutterFlowTheme.of(context).error,
                                 showSpeed: true,
                                 initialZoom: 17.0,
-                                showMarkers: true,
-                                markerType: 'single',
                                 initialLocation: currentUserLocationValue!,
                                 markerLocations: functions.converteStringLatLng(
                                     googleMapsLiveRouteTrakingDriverRowList
@@ -170,8 +168,13 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                         .map((e) => e.location)
                                         .withoutNulls
                                         .toList()),
-                                showRecordedRoute: true,
+                                userRouteColor:
+                                    FlutterFlowTheme.of(context).primaryText,
+                                showTraffic: true,
+                                mapTilt: 0.0,
                                 showUserRoute: true,
+                                showSavedRoute: true,
+                                showMarkers: true,
                               ),
                             );
                           },
@@ -184,7 +187,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             },
                             text: 'Parar Rastrear',
                             options: FFButtonOptions(
-                              height: 57.59,
+                              height: 57.6,
                               padding: EdgeInsetsDirectional.fromSTEB(
                                   16.0, 0.0, 16.0, 0.0),
                               iconPadding: EdgeInsetsDirectional.fromSTEB(
@@ -230,7 +233,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             },
                             text: 'Iniciar Rastrear',
                             options: FFButtonOptions(
-                              height: 51.89,
+                              height: 52.0,
                               padding: EdgeInsetsDirectional.fromSTEB(
                                   16.0, 0.0, 16.0, 0.0),
                               iconPadding: EdgeInsetsDirectional.fromSTEB(

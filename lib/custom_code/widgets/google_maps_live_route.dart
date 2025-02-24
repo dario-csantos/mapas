@@ -22,13 +22,15 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.initialLocation,
     required this.updateIntervalSeconds,
     required this.minDistanceFilter,
+    required this.userRouteColor,
     required this.routeColor,
     required this.showSpeed,
-    required this.showMarkers,
-    required this.showRecordedRoute,
-    required this.showUserRoute,
+    required this.showTraffic,
     required this.initialZoom,
-    required this.markerType,
+    required this.mapTilt,
+    required this.showMarkers, // 🔥 Parâmetro corrigido
+    required this.showUserRoute,
+    required this.showSavedRoute,
     this.markerLocations = const [],
     this.polylineRota = const [],
   });
@@ -38,13 +40,15 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final LatLng initialLocation;
   final int updateIntervalSeconds;
   final double minDistanceFilter;
+  final Color userRouteColor;
   final Color routeColor;
   final bool showSpeed;
-  final bool showMarkers;
-  final bool showRecordedRoute;
-  final bool showUserRoute;
+  final bool showTraffic;
   final double initialZoom;
-  final String markerType;
+  final double mapTilt;
+  final bool showMarkers; // 🔥 Garantir que ele realmente funcione
+  final bool showUserRoute;
+  final bool showSavedRoute;
   final List<LatLng> markerLocations;
   final List<LatLng> polylineRota;
 
@@ -56,7 +60,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   gmaps.GoogleMapController? _mapController;
   Set<gmaps.Polyline> _polylines = {};
   Set<gmaps.Marker> _markers = {};
-  List<gmaps.LatLng> _routePoints = [];
+  List<gmaps.LatLng> _userRoutePoints = [];
   StreamSubscription<Position>? _positionStream;
   Timer? _updateTimer;
   gmaps.LatLng? _currentPosition;
@@ -79,7 +83,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     super.dispose();
   }
 
-  /// Obtém a posição inicial com base no parâmetro initialLocation
   Future<void> _getInitialPosition() async {
     setState(() {
       _currentPosition = gmaps.LatLng(
@@ -93,7 +96,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             gmaps.CameraPosition(
               target: _currentPosition!,
               zoom: widget.initialZoom,
-              tilt: 0.0,
+              tilt: widget.mapTilt,
             ),
           ),
         );
@@ -101,7 +104,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// Inicia o rastreamento da localização do usuário
   Future<void> _startTracking() async {
     LocationPermission permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied ||
@@ -127,7 +129,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  /// Atualiza a posição do usuário, velocidade e mantém o zoom personalizado
   void _updateUserLocation(Position position) async {
     final gmaps.LatLng newPosition =
         gmaps.LatLng(position.latitude, position.longitude);
@@ -149,18 +150,21 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     setState(() {
       _currentSpeed = speedKmH;
       _currentHeading = heading;
-      _routePoints.add(newPosition);
+      _userRoutePoints.add(newPosition);
 
-      _markers = {
-        gmaps.Marker(
-          markerId: const gmaps.MarkerId("user_position"),
-          position: newPosition,
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-              gmaps.BitmapDescriptor.hueBlue),
-        ),
-      };
+      _markers.clear(); // 🔥 Limpa marcadores antigos
+      if (widget.showMarkers) {
+        _markers.add(
+          gmaps.Marker(
+            markerId: const gmaps.MarkerId("user_position"),
+            position: newPosition,
+            icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+                gmaps.BitmapDescriptor.hueBlue),
+          ),
+        );
+      }
 
-      _loadPolylineRota();
+      _updateUserPolyline();
     });
 
     _mapController!.animateCamera(
@@ -169,48 +173,48 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           target: newPosition,
           zoom: _currentZoom,
           bearing: _currentHeading,
-          tilt: 60.0,
+          tilt: widget.mapTilt,
         ),
       ),
     );
   }
 
-  /// 🔥 Carrega as polylines (rota gravada e do usuário) conforme os parâmetros de ativação
-  void _loadPolylineRota() {
-    Set<gmaps.Polyline> polylineSet = {};
+  void _updateUserPolyline() {
+    if (!widget.showUserRoute) return;
 
-    if (widget.showRecordedRoute && widget.polylineRota.isNotEmpty) {
-      List<gmaps.LatLng> convertedPoints = widget.polylineRota
-          .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
-          .toList();
-
-      polylineSet.add(
+    setState(() {
+      _polylines.removeWhere((poly) => poly.polylineId.value == "user_route");
+      _polylines.add(
         gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("polyline_rota"),
+          polylineId: const gmaps.PolylineId("user_route"),
+          points: _userRoutePoints,
+          color: widget.userRouteColor,
+          width: 5,
+        ),
+      );
+    });
+  }
+
+  void _loadPolylineRota() {
+    if (!widget.showSavedRoute) return;
+
+    List<gmaps.LatLng> convertedPoints = widget.polylineRota
+        .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
+        .toList();
+
+    setState(() {
+      _polylines.removeWhere((poly) => poly.polylineId.value == "saved_route");
+      _polylines.add(
+        gmaps.Polyline(
+          polylineId: const gmaps.PolylineId("saved_route"),
           points: convertedPoints,
           color: widget.routeColor,
           width: 5,
         ),
       );
-    }
-
-    if (widget.showUserRoute && _routePoints.isNotEmpty) {
-      polylineSet.add(
-        gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("user_route"),
-          points: _routePoints,
-          color: Colors.blue,
-          width: 4,
-        ),
-      );
-    }
-
-    setState(() {
-      _polylines = polylineSet;
     });
   }
 
-  /// 🔥 Adiciona apenas os marcadores definidos no parâmetro markerLocations
   Set<gmaps.Marker> _buildMarkers() {
     if (!widget.showMarkers) return {};
 
@@ -226,24 +230,20 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Container(
-          width: widget.width ?? double.infinity,
-          height: widget.height ?? double.infinity,
-          child: gmaps.GoogleMap(
-            onMapCreated: (controller) {
-              _mapController = controller;
-              _loadPolylineRota();
-            },
-            initialCameraPosition: gmaps.CameraPosition(
-              target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
-              zoom: widget.initialZoom,
-            ),
-            markers: _buildMarkers().union(_markers),
-            polylines: _polylines,
-            myLocationEnabled: false,
-            compassEnabled: true,
-            trafficEnabled: false,
+        gmaps.GoogleMap(
+          onMapCreated: (controller) {
+            _mapController = controller;
+            _loadPolylineRota();
+          },
+          initialCameraPosition: gmaps.CameraPosition(
+            target: _currentPosition ?? gmaps.LatLng(0.0, 0.0),
+            zoom: widget.initialZoom,
           ),
+          markers: _markers.union(_buildMarkers()),
+          polylines: _polylines,
+          myLocationEnabled: false,
+          compassEnabled: true,
+          trafficEnabled: widget.showTraffic,
         ),
         if (widget.showSpeed)
           Positioned(
