@@ -10,8 +10,6 @@ import 'package:flutter/material.dart';
 
 import 'index.dart'; // Imports other custom widgets
 
-import 'index.dart'; // Imports other custom widgets
-
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -22,7 +20,6 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     this.width,
     this.height,
     required this.initialLocation,
-    required this.showUserRoute,
     required this.updateIntervalSeconds,
     required this.minDistanceFilter,
     required this.userRouteColor,
@@ -32,8 +29,9 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.initialZoom,
     required this.mapTilt,
     required this.showMarkers, // 🔥 Parâmetro corrigido
-    this.markerLocations = const [],
+    required this.showUserRoute,
     required this.showSavedRoute,
+    this.markerLocations = const [],
     this.polylineRota = const [],
   });
 
@@ -48,10 +46,10 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final bool showTraffic;
   final double initialZoom;
   final double mapTilt;
-  final bool showUserRoute;
   final bool showMarkers; // 🔥 Garantir que ele realmente funcione
-  final List<LatLng> markerLocations;
+  final bool showUserRoute;
   final bool showSavedRoute;
+  final List<LatLng> markerLocations;
   final List<LatLng> polylineRota;
 
   @override
