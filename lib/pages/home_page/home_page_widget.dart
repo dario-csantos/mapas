@@ -6,7 +6,6 @@ import '/flutter_flow/instant_timer.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
@@ -31,6 +30,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
+    getCurrentUserLocation(defaultLocation: LatLng(0.0, 0.0), cached: true)
+        .then((loc) => safeSetState(() => currentUserLocationValue = loc));
     _model.switchValue1 = false;
     _model.switchValue2 = false;
     _model.switchValue3 = false;
@@ -47,7 +48,22 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    context.watch<FFAppState>();
+    if (currentUserLocationValue == null) {
+      return Container(
+        color: FlutterFlowTheme.of(context).primaryBackground,
+        child: Center(
+          child: SizedBox(
+            width: 50.0,
+            height: 50.0,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                FlutterFlowTheme.of(context).primary,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return FutureBuilder<List<ViewLocationsRow>>(
       future: ViewLocationsTable().queryRows(
@@ -151,7 +167,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 mapTilt: 0.0,
                                 showMarkers: _model.switchValue3!,
                                 showSavedRoute: _model.switchValue2!,
-                                initialLocation: FFAppState().CoordCasa!,
+                                initialLocation: currentUserLocationValue!,
                                 markerLocations: functions.converteStringLatLng(
                                     googleMapsLiveRouteTrakingDriverRowList
                                         .map((e) => e.location)
