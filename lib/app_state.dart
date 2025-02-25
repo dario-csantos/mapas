@@ -22,13 +22,13 @@ class FFAppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  LatLng? _locations2 = LatLng(37.13617, -8.5376926);
+  LatLng? _locations2 = LatLng(37.13406299999999, -8.5443944);
   LatLng? get locations2 => _locations2;
   set locations2(LatLng? value) {
     _locations2 = value;
   }
 
-  LatLng? _CoordCasa = LatLng(37.13406299999999, -8.5443944);
+  LatLng? _CoordCasa = LatLng(37.1358268, -8.5430254);
   LatLng? get CoordCasa => _CoordCasa;
   set CoordCasa(LatLng? value) {
     _CoordCasa = value;

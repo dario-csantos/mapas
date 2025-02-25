@@ -119,9 +119,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             showTraffic: _model.switchTransitoValue!,
                             initialZoom: 14.0,
                             mapTilt: 60.0,
-                            showMarkers: _model.switchMarkersValue!,
                             showUserRoute: true,
-                            showSavedRoute: true,
                             initialLocation: FFAppState().CoordCasa!,
                             markerLocations: functions.converteStringLatLng(
                                 homePageViewLocationsRowList
@@ -130,7 +128,9 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                     .map((e) => e.location)
                                     .withoutNulls
                                     .toList()),
-                            polylineRota: functions.converteStringLatLng(
+                            showMarkersLocations: _model.switchMarkersValue!,
+                            showPolylineSavedRoute: true,
+                            polylineSavedRoute: functions.converteStringLatLng(
                                 homePageViewLocationsRowList
                                     .where((e) => e.driverStatus == true)
                                     .toList()
