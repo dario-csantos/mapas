@@ -15,6 +15,7 @@ import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 
+import '/custom_code/actions/update_navigator_mode_action.dart'; // Se você usa a Custom Action
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -77,23 +78,20 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   bool _showSavedRoute = false;
   bool _showMarkers = false;
   bool _showUserRoute = false;
-  bool _navigatorMode = false; // false = standby, true = navigator
+  bool _navigatorMode = false; // Modo Navegador
+  bool _trackingMode = false; // Modo Rastrear
 
-  // Controlador para o DraggableScrollableSheet (Flutter 3.7+)
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
 
   @override
   void initState() {
     super.initState();
-    // Mantém a tela ligada
     WakelockPlus.enable();
-
     _currentPosition = gmaps.LatLng(
       widget.initialLocation.latitude,
       widget.initialLocation.longitude,
     );
-
     _getInitialPosition();
     _startTracking();
     _loadPolylineSavedRoute();
@@ -113,7 +111,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         widget.initialLocation.longitude,
       );
     });
-
     Future.delayed(const Duration(milliseconds: 500), () {
       if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
@@ -132,12 +129,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   void _loadPolylineSavedRoute() {
     setState(() {
       _polylines.removeWhere((poly) => poly.polylineId.value == "saved_route");
-
       if (_showSavedRoute) {
         List<gmaps.LatLng> convertedPoints = widget.polylineSavedRoute
             .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
             .toList();
-
         _polylines.add(
           gmaps.Polyline(
             polylineId: const gmaps.PolylineId("saved_route"),
@@ -157,7 +152,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       print("❌ Permissão negada.");
       return;
     }
-
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.best,
@@ -166,7 +160,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     ).listen((Position newPosition) {
       _updateUserLocation(newPosition);
     });
-
     _updateTimer = Timer.periodic(
       Duration(seconds: widget.updateIntervalSeconds),
       (timer) async {
@@ -181,31 +174,20 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   void _updateUserLocation(Position position) async {
     final gmaps.LatLng newPosition =
         gmaps.LatLng(position.latitude, position.longitude);
-
     double speedKmH = position.speed * 3.6;
-    if (speedKmH.isNaN || speedKmH < 0) {
-      speedKmH = 0.0;
-    }
-
+    if (speedKmH.isNaN || speedKmH < 0) speedKmH = 0.0;
     double heading = position.heading;
-    if (heading.isNaN || heading < 0) {
-      heading = _currentHeading;
-    }
-
+    if (heading.isNaN || heading < 0) heading = _currentHeading;
     if (_mapController != null) {
       _currentZoom = await _mapController!.getZoomLevel();
     }
-
     setState(() {
       _currentSpeed = speedKmH;
       _currentHeading = heading;
       _currentPosition = newPosition;
       _userRoutePoints.add(newPosition);
-
       _updateUserPolyline();
     });
-
-    // Se estiver no modo navegador, atualiza a câmera
     if (_navigatorMode && _mapController != null) {
       _mapController!.animateCamera(
         gmaps.CameraUpdate.newCameraPosition(
@@ -223,7 +205,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   void _updateUserPolyline() {
     setState(() {
       _polylines.removeWhere((poly) => poly.polylineId.value == "user_route");
-
       if (_showUserRoute) {
         _polylines.add(
           gmaps.Polyline(
@@ -237,7 +218,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  // Altera o ícone do marcador do usuário conforme o modo navegador
+  // Retorna os marcadores do usuário
   Set<gmaps.Marker> _buildMarkerUser() {
     return {
       gmaps.Marker(
@@ -247,7 +228,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               widget.initialLocation.latitude,
               widget.initialLocation.longitude,
             ),
-        // Se estiver no modo navegador, muda a cor para verde; senão, azul
         icon: _navigatorMode
             ? gmaps.BitmapDescriptor.defaultMarkerWithHue(
                 gmaps.BitmapDescriptor.hueGreen,
@@ -259,6 +239,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     };
   }
 
+  // Retorna os outros marcadores
   Set<gmaps.Marker> _buildMarkers() {
     if (!_showMarkers) return {};
     return widget.markerLocations.map((location) {
@@ -272,13 +253,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }).toSet();
   }
 
-  // Função que alterna o modo navegador e ajusta a câmera
-  void _toggleNavigatorMode() {
+  // Alterna o modo Navigator e atualiza a câmera e variável global
+  Future<void> _toggleNavigatorMode() async {
     setState(() {
       _navigatorMode = !_navigatorMode;
     });
+    await updateNavigatorModeAction(_navigatorMode);
     if (_navigatorMode) {
-      // Ativa o modo navegador: ajusta a câmera com zoom predefinido e tilt
       if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
           gmaps.CameraUpdate.newCameraPosition(
@@ -292,7 +273,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         );
       }
     } else {
-      // Desativa o modo navegador: ajusta a câmera para tilt 0
       if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
           gmaps.CameraUpdate.newCameraPosition(
@@ -305,7 +285,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           ),
         );
       }
+      _trackingMode = false;
     }
+    setState(() {});
+  }
+
+  // Alterna o modo Rastrear
+  void _toggleTracking() {
+    setState(() {
+      _trackingMode = !_trackingMode;
+    });
+    // Aqui você pode implementar o cálculo de distância, tempo, etc.
   }
 
   @override
@@ -327,12 +317,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                   ),
               zoom: widget.initialZoom,
             ),
-
-            // Se estiver no modo navigator, adiciona padding no topo pra “empurrar” o usuário pra baixo
+            // Aplica padding se estiver no modo navigator para deslocar o centro do mapa
             padding: _navigatorMode
                 ? const EdgeInsets.only(top: 200)
                 : EdgeInsets.zero,
-
             markers: _buildMarkerUser().union(_buildMarkers()),
             polylines: _polylines,
             myLocationEnabled: false,
@@ -378,9 +366,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           // DRAGGABLE SHEET (Painel estilo Waze)
           DraggableScrollableSheet(
             controller: _sheetController,
-            initialChildSize: 0.12,
+            initialChildSize: 0.26,
             minChildSize: 0.12,
-            maxChildSize: 0.5,
+            maxChildSize: 0.29,
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
@@ -411,43 +399,173 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                       ),
                       const SizedBox(height: 8),
 
-                      // Linha principal com o botão "Navegar"
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                _navigatorMode ? Colors.red : Colors.orange,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                      // Estado 1: se !_navigatorMode => Botão "Navegar" laranja
+                      if (!_navigatorMode)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              minimumSize: const Size(300, 56),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            minimumSize: const Size(300,
-                                56), // 300 de largura e 56 de altura mínima
-                          ),
-                          onPressed: () {
-                            _toggleNavigatorMode();
-                          },
-                          icon: const Icon(
-                            Icons.navigation,
-                            color: Colors.white,
-                          ),
-                          label: Text(
-                            _navigatorMode ? "Navegando" : "Navegar",
-                            style: const TextStyle(
+                            onPressed: () {
+                              _toggleNavigatorMode();
+                            },
+                            icon: const Icon(
+                              Icons.navigation,
                               color: Colors.white,
-                              fontSize: 16,
+                            ),
+                            label: const Text(
+                              "Navegar",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
+                        )
+                      else
+                        // Estado 2 e 3: se _navigatorMode => mostra "Navegando"/"Rastrear"
+                        Column(
+                          children: [
+                            // Estado 3: se _trackingMode => mostra estatísticas
+                            if (_trackingMode) ...[
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  // Distância
+                                  Column(
+                                    children: const [
+                                      Text(
+                                        "3.1",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                        ),
+                                      ),
+                                      Text(
+                                        "km",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  // Velocidade
+                                  Column(
+                                    children: [
+                                      Text(
+                                        "${_currentSpeed.toStringAsFixed(1)}",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                        ),
+                                      ),
+                                      const Text(
+                                        "km/h",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  // Tempo
+                                  Column(
+                                    children: const [
+                                      Text(
+                                        "1:17:04",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                        ),
+                                      ),
+                                      Text(
+                                        "tempo",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // Linha com 2 botões: "Navegando" e "Rastrear/Pausar"
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                      horizontal: 20,
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    _toggleNavigatorMode();
+                                  },
+                                  icon: const Icon(
+                                    Icons.navigation,
+                                    color: Colors.white,
+                                  ),
+                                  label: const Text(
+                                    "Navegando",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _trackingMode
+                                        ? Colors.red
+                                        : Colors.green,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                      horizontal: 20,
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    _toggleTracking();
+                                  },
+                                  child: Text(
+                                    _trackingMode ? "Pausar" : "Rastrear",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
 
                       const SizedBox(height: 16),
 
-                      // Outras linhas com botões de rota, marcadores, etc.
+                      // Agora os QUATRO FABs numa única linha
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
+                          // FAB 1 (Rota Salva)
                           FloatingActionButton(
                             onPressed: () {
                               setState(() {
@@ -455,12 +573,16 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                               });
                               _loadPolylineSavedRoute();
                             },
-                            child: Icon(_showSavedRoute
-                                ? Icons.route
-                                : Icons.route_outlined),
+                            child: Icon(
+                              _showSavedRoute
+                                  ? Icons.route
+                                  : Icons.route_outlined,
+                            ),
                             backgroundColor: Colors.green,
                             tooltip: "Mostrar/Ocultar Rota Salva",
                           ),
+
+                          // FAB 2 (Marcadores)
                           FloatingActionButton(
                             onPressed: () {
                               setState(() {
@@ -475,12 +597,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                             backgroundColor: Colors.red,
                             tooltip: "Mostrar/Ocultar Marcadores",
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
+
+                          // FAB 3 (Minha Rota)
                           FloatingActionButton(
                             onPressed: () {
                               setState(() {
@@ -496,6 +614,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                             backgroundColor: Colors.blue,
                             tooltip: "Mostrar/Ocultar Minha Rota",
                           ),
+
+                          // FAB 4 (Tráfego)
                           FloatingActionButton(
                             onPressed: () {
                               setState(() {
@@ -512,7 +632,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
+
+                      const SizedBox(height: 10),
                     ],
                   ),
                 ),
