@@ -3,6 +3,7 @@ import '/backend/supabase/supabase.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import 'index.dart'; // Imports other custom widgets
+import '/custom_code/actions/index.dart'; // Imports custom actions
 import '/flutter_flow/custom_functions.dart'; // Imports custom functions
 import 'package:flutter/material.dart';
 // Begin custom widget code
@@ -76,7 +77,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   bool _showSavedRoute = false;
   bool _showMarkers = false;
   bool _showUserRoute = false;
-  bool _navigatorMode = false; // false = modo standby, true = modo navigator
+  bool _navigatorMode = false; // false = standby, true = navigator
+
+  // Controlador para o DraggableScrollableSheet (Flutter 3.7+)
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
 
   @override
   void initState() {
@@ -200,7 +205,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _updateUserPolyline();
     });
 
-    // Atualiza a câmera se estivermos no modo navigator
+    // Se estiver no modo navegador, atualiza a câmera
     if (_navigatorMode && _mapController != null) {
       _mapController!.animateCamera(
         gmaps.CameraUpdate.newCameraPosition(
@@ -232,6 +237,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
+  // Altera o ícone do marcador do usuário conforme o modo navegador
   Set<gmaps.Marker> _buildMarkerUser() {
     return {
       gmaps.Marker(
@@ -241,9 +247,14 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               widget.initialLocation.latitude,
               widget.initialLocation.longitude,
             ),
-        icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-          gmaps.BitmapDescriptor.hueBlue,
-        ),
+        // Se estiver no modo navegador, muda a cor para verde; senão, azul
+        icon: _navigatorMode
+            ? gmaps.BitmapDescriptor.defaultMarkerWithHue(
+                gmaps.BitmapDescriptor.hueGreen,
+              )
+            : gmaps.BitmapDescriptor.defaultMarkerWithHue(
+                gmaps.BitmapDescriptor.hueBlue,
+              ),
       ),
     };
   }
@@ -259,6 +270,42 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         ),
       );
     }).toSet();
+  }
+
+  // Função que alterna o modo navegador e ajusta a câmera
+  void _toggleNavigatorMode() {
+    setState(() {
+      _navigatorMode = !_navigatorMode;
+    });
+    if (_navigatorMode) {
+      // Ativa o modo navegador: ajusta a câmera com zoom predefinido e tilt
+      if (_mapController != null && _currentPosition != null) {
+        _mapController!.animateCamera(
+          gmaps.CameraUpdate.newCameraPosition(
+            gmaps.CameraPosition(
+              target: _currentPosition!,
+              zoom: widget.initialZoom,
+              bearing: _currentHeading,
+              tilt: widget.mapTilt,
+            ),
+          ),
+        );
+      }
+    } else {
+      // Desativa o modo navegador: ajusta a câmera para tilt 0
+      if (_mapController != null && _currentPosition != null) {
+        _mapController!.animateCamera(
+          gmaps.CameraUpdate.newCameraPosition(
+            gmaps.CameraPosition(
+              target: _currentPosition!,
+              zoom: _currentZoom,
+              bearing: _currentHeading,
+              tilt: 0,
+            ),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -280,6 +327,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                   ),
               zoom: widget.initialZoom,
             ),
+
+            // Se estiver no modo navigator, adiciona padding no topo pra “empurrar” o usuário pra baixo
+            padding: _navigatorMode
+                ? const EdgeInsets.only(top: 200)
+                : EdgeInsets.zero,
+
             markers: _buildMarkerUser().union(_buildMarkers()),
             polylines: _polylines,
             myLocationEnabled: false,
@@ -287,7 +340,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             trafficEnabled: _showTraffic,
           ),
 
-          // VELOCIDADE
+          // Velocidade
           if (widget.showSpeed)
             Positioned(
               top: 20,
@@ -305,7 +358,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               ),
             ),
 
-          // ZOOM
+          // Zoom
           Positioned(
             top: 20,
             left: 20,
@@ -322,15 +375,16 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             ),
           ),
 
-          // DRAGGABLE SHEET (Painel do Waze)
+          // DRAGGABLE SHEET (Painel estilo Waze)
           DraggableScrollableSheet(
-            initialChildSize: 0.12, // 12% da tela
+            controller: _sheetController,
+            initialChildSize: 0.12,
             minChildSize: 0.12,
-            maxChildSize: 0.5, // 50% da tela
+            maxChildSize: 0.5,
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.black,
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(16)),
                   boxShadow: [
@@ -356,7 +410,41 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // Linha 1: Rota Salva e Marcadores
+
+                      // Linha principal com o botão "Navegar"
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                _navigatorMode ? Colors.red : Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            minimumSize: const Size(300,
+                                56), // 300 de largura e 56 de altura mínima
+                          ),
+                          onPressed: () {
+                            _toggleNavigatorMode();
+                          },
+                          icon: const Icon(
+                            Icons.navigation,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            _navigatorMode ? "Navegando" : "Navegar",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Outras linhas com botões de rota, marcadores, etc.
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -390,7 +478,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      // Linha 2: Rota do Usuário e Tráfego
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -425,60 +512,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      // Linha 3: Botão Único de Navigator
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          FloatingActionButton(
-                            onPressed: () {
-                              setState(() {
-                                _navigatorMode = !_navigatorMode;
-                              });
-                              if (_navigatorMode) {
-                                if (_mapController != null &&
-                                    _currentPosition != null) {
-                                  _mapController!.animateCamera(
-                                    gmaps.CameraUpdate.newCameraPosition(
-                                      gmaps.CameraPosition(
-                                        target: _currentPosition!,
-                                        zoom: widget.initialZoom,
-                                        bearing: _currentHeading,
-                                        tilt: widget.mapTilt,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              } else {
-                                if (_mapController != null &&
-                                    _currentPosition != null) {
-                                  _mapController!.animateCamera(
-                                    gmaps.CameraUpdate.newCameraPosition(
-                                      gmaps.CameraPosition(
-                                        target: _currentPosition!,
-                                        zoom: _currentZoom,
-                                        bearing: _currentHeading,
-                                        tilt: 0,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            child: Icon(
-                              _navigatorMode
-                                  ? Icons.navigation
-                                  : Icons.navigation_outlined,
-                            ),
-                            backgroundColor:
-                                _navigatorMode ? Colors.green : Colors.red,
-                            tooltip: _navigatorMode
-                                ? "Desativar Navigator"
-                                : "Ativar Navigator",
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),

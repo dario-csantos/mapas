@@ -39,4 +39,10 @@ class FFAppState extends ChangeNotifier {
   set showRouteSave(bool value) {
     _showRouteSave = value;
   }
+
+  bool _isNavigatorMode = false;
+  bool get isNavigatorMode => _isNavigatorMode;
+  set isNavigatorMode(bool value) {
+    _isNavigatorMode = value;
+  }
 }
