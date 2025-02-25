@@ -11,13 +11,12 @@ import 'package:flutter/material.dart';
 import 'index.dart'; // Imports other custom widgets
 
 import 'index.dart'; // Imports other custom widgets
-
+import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
-
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 class GoogleMapsLiveRoute extends StatefulWidget {
@@ -77,16 +76,18 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   bool _showSavedRoute = false;
   bool _showMarkers = false;
   bool _showUserRoute = false;
+  bool _navigatorMode = false; // false = modo standby, true = modo navigator
 
   @override
   void initState() {
     super.initState();
-
-// Ativa o wakelock para manter a tela ligada
+    // Mantém a tela ligada
     WakelockPlus.enable();
 
     _currentPosition = gmaps.LatLng(
-        widget.initialLocation.latitude, widget.initialLocation.longitude);
+      widget.initialLocation.latitude,
+      widget.initialLocation.longitude,
+    );
 
     _getInitialPosition();
     _startTracking();
@@ -103,11 +104,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   Future<void> _getInitialPosition() async {
     setState(() {
       _currentPosition = gmaps.LatLng(
-          widget.initialLocation.latitude, widget.initialLocation.longitude);
+        widget.initialLocation.latitude,
+        widget.initialLocation.longitude,
+      );
     });
 
-    Future.delayed(Duration(milliseconds: 500), () {
-      if (_mapController != null) {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
           gmaps.CameraUpdate.newCameraPosition(
             gmaps.CameraPosition(
@@ -151,7 +154,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
 
     _positionStream = Geolocator.getPositionStream(
-      locationSettings: LocationSettings(
+      locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.best,
         distanceFilter: 1,
       ),
@@ -160,11 +163,14 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
 
     _updateTimer = Timer.periodic(
-        Duration(seconds: widget.updateIntervalSeconds), (timer) async {
-      Position newPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.best);
-      _updateUserLocation(newPosition);
-    });
+      Duration(seconds: widget.updateIntervalSeconds),
+      (timer) async {
+        Position newPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.best,
+        );
+        _updateUserLocation(newPosition);
+      },
+    );
   }
 
   void _updateUserLocation(Position position) async {
@@ -173,7 +179,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
 
     double speedKmH = position.speed * 3.6;
     if (speedKmH.isNaN || speedKmH < 0) {
-      speedKmH = 0.0; // 🔥 Agora sempre exibe 0 se o usuário estiver parado
+      speedKmH = 0.0;
     }
 
     double heading = position.heading;
@@ -194,16 +200,19 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _updateUserPolyline();
     });
 
-    _mapController!.animateCamera(
-      gmaps.CameraUpdate.newCameraPosition(
-        gmaps.CameraPosition(
-          target: newPosition,
-          zoom: _currentZoom,
-          bearing: _currentHeading,
-          tilt: widget.mapTilt,
+    // Atualiza a câmera se estivermos no modo navigator
+    if (_navigatorMode && _mapController != null) {
+      _mapController!.animateCamera(
+        gmaps.CameraUpdate.newCameraPosition(
+          gmaps.CameraPosition(
+            target: newPosition,
+            zoom: _currentZoom,
+            bearing: _currentHeading,
+            tilt: widget.mapTilt,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   void _updateUserPolyline() {
@@ -228,144 +237,256 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       gmaps.Marker(
         markerId: const gmaps.MarkerId("user_position"),
         position: _currentPosition ??
-            gmaps.LatLng(widget.initialLocation.latitude,
-                widget.initialLocation.longitude),
+            gmaps.LatLng(
+              widget.initialLocation.latitude,
+              widget.initialLocation.longitude,
+            ),
         icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-            gmaps.BitmapDescriptor.hueBlue),
+          gmaps.BitmapDescriptor.hueBlue,
+        ),
       ),
     };
   }
 
   Set<gmaps.Marker> _buildMarkers() {
     if (!_showMarkers) return {};
-    //if (!widget.showMarkersLocations) return {};
-
     return widget.markerLocations.map((location) {
       return gmaps.Marker(
         markerId: gmaps.MarkerId(location.toString()),
         position: gmaps.LatLng(location.latitude, location.longitude),
         icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-            gmaps.BitmapDescriptor.hueRed),
+          gmaps.BitmapDescriptor.hueRed,
+        ),
       );
     }).toSet();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        gmaps.GoogleMap(
-          onMapCreated: (controller) {
-            _mapController = controller;
-            _loadPolylineSavedRoute();
-          },
-          initialCameraPosition: gmaps.CameraPosition(
-            target: _currentPosition ??
-                gmaps.LatLng(widget.initialLocation.latitude,
-                    widget.initialLocation.longitude),
-            zoom: widget.initialZoom,
+    return Scaffold(
+      body: Stack(
+        children: [
+          // MAPA
+          gmaps.GoogleMap(
+            onMapCreated: (controller) {
+              _mapController = controller;
+              _loadPolylineSavedRoute();
+            },
+            initialCameraPosition: gmaps.CameraPosition(
+              target: _currentPosition ??
+                  gmaps.LatLng(
+                    widget.initialLocation.latitude,
+                    widget.initialLocation.longitude,
+                  ),
+              zoom: widget.initialZoom,
+            ),
+            markers: _buildMarkerUser().union(_buildMarkers()),
+            polylines: _polylines,
+            myLocationEnabled: false,
+            compassEnabled: true,
+            trafficEnabled: _showTraffic,
           ),
-          markers: _buildMarkerUser().union(_buildMarkers()),
-          polylines: _polylines,
-          myLocationEnabled: false,
-          compassEnabled: true,
-          trafficEnabled: _showTraffic, // trafficEnabled: widget.showTraffic,
-        ),
 
-        /*Positioned(
-          bottom: 140,
-          right: 100,
-          child:
+          // VELOCIDADE
+          if (widget.showSpeed)
+            Positioned(
+              top: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  "${_currentSpeed.toStringAsFixed(1)} km/h",
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                ),
+              ),
+            ),
 
-          ElevatedButton(
-            onPressed: () {
-              print("Botão clicado!");
-            },
-            child: Text("Clique Aqui"),
-          ),
-        ),*/
-
-        Positioned(
-          bottom: 200,
-          right: 20,
-          child: FloatingActionButton(
-            onPressed: () {
-              setState(() {
-                _showSavedRoute =
-                    !_showSavedRoute; // 🔄 Alterna entre ativado e desativado
-              });
-              _loadPolylineSavedRoute(); // 🔥 Atualiza o mapa corretamente
-            },
-            child: Icon(_showSavedRoute ? Icons.route : Icons.route_outlined),
-            backgroundColor: Colors.green,
-          ),
-        ),
-        Positioned(
-          bottom: 260, // 🔥 Ajuste a posição conforme necessário
-          right: 20,
-          child: FloatingActionButton(
-            onPressed: () {
-              setState(() {
-                _showMarkers =
-                    !_showMarkers; // 🔄 Alterna entre ativado e desativado
-              });
-            },
-            child: Icon(_showMarkers
-                ? Icons.location_on
-                : Icons.location_off), // 🔥 Ícone muda conforme o estado
-            backgroundColor: Colors.red,
-          ),
-        ),
-        Positioned(
-          bottom: 320, // 🔥 Ajuste a posição conforme necessário
-          right: 20,
-          child: FloatingActionButton(
-            onPressed: () {
-              setState(() {
-                _showUserRoute =
-                    !_showUserRoute; // 🔄 Alterna entre ativado e desativado
-                _updateUserPolyline(); // 🔥 Atualiza a exibição da rota do usuário
-              });
-            },
-            child: Icon(_showUserRoute
-                ? Icons.timeline
-                : Icons.timeline_outlined), // 🔥 Ícone muda conforme o estado
-            backgroundColor: Colors.blue,
-          ),
-        ),
-        Positioned(
-          bottom: 140, // Ajuste a posição conforme necessário
-          right: 20,
-          child: FloatingActionButton(
-            onPressed: () {
-              setState(() {
-                _showTraffic =
-                    !_showTraffic; // 🔄 Alterna entre ativado e desativado
-              });
-            },
-            child: Icon(_showTraffic
-                ? Icons.traffic
-                : Icons.traffic_outlined), // 🔥 Ícone muda conforme estado
-            backgroundColor: Colors.orange,
-          ),
-        ),
-        if (widget.showSpeed)
+          // ZOOM
           Positioned(
             top: 20,
-            right: 20,
+            left: 20,
             child: Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(10),
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                "${_currentSpeed.toStringAsFixed(1)} km/h",
-                style: const TextStyle(color: Colors.white, fontSize: 18),
+                "Zoom: ${_currentZoom.toStringAsFixed(2)}",
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
           ),
-      ],
+
+          // DRAGGABLE SHEET (Painel do Waze)
+          DraggableScrollableSheet(
+            initialChildSize: 0.12, // 12% da tela
+            minChildSize: 0.12,
+            maxChildSize: 0.5, // 50% da tela
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: Column(
+                    children: [
+                      // Barra de puxar
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[400],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Linha 1: Rota Salva e Marcadores
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          FloatingActionButton(
+                            onPressed: () {
+                              setState(() {
+                                _showSavedRoute = !_showSavedRoute;
+                              });
+                              _loadPolylineSavedRoute();
+                            },
+                            child: Icon(_showSavedRoute
+                                ? Icons.route
+                                : Icons.route_outlined),
+                            backgroundColor: Colors.green,
+                            tooltip: "Mostrar/Ocultar Rota Salva",
+                          ),
+                          FloatingActionButton(
+                            onPressed: () {
+                              setState(() {
+                                _showMarkers = !_showMarkers;
+                              });
+                            },
+                            child: Icon(
+                              _showMarkers
+                                  ? Icons.location_on
+                                  : Icons.location_off,
+                            ),
+                            backgroundColor: Colors.red,
+                            tooltip: "Mostrar/Ocultar Marcadores",
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Linha 2: Rota do Usuário e Tráfego
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          FloatingActionButton(
+                            onPressed: () {
+                              setState(() {
+                                _showUserRoute = !_showUserRoute;
+                              });
+                              _updateUserPolyline();
+                            },
+                            child: Icon(
+                              _showUserRoute
+                                  ? Icons.timeline
+                                  : Icons.timeline_outlined,
+                            ),
+                            backgroundColor: Colors.blue,
+                            tooltip: "Mostrar/Ocultar Minha Rota",
+                          ),
+                          FloatingActionButton(
+                            onPressed: () {
+                              setState(() {
+                                _showTraffic = !_showTraffic;
+                              });
+                            },
+                            child: Icon(
+                              _showTraffic
+                                  ? Icons.traffic
+                                  : Icons.traffic_outlined,
+                            ),
+                            backgroundColor: Colors.orange,
+                            tooltip: "Mostrar/Ocultar Tráfego",
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Linha 3: Botão Único de Navigator
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          FloatingActionButton(
+                            onPressed: () {
+                              setState(() {
+                                _navigatorMode = !_navigatorMode;
+                              });
+                              if (_navigatorMode) {
+                                if (_mapController != null &&
+                                    _currentPosition != null) {
+                                  _mapController!.animateCamera(
+                                    gmaps.CameraUpdate.newCameraPosition(
+                                      gmaps.CameraPosition(
+                                        target: _currentPosition!,
+                                        zoom: widget.initialZoom,
+                                        bearing: _currentHeading,
+                                        tilt: widget.mapTilt,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                if (_mapController != null &&
+                                    _currentPosition != null) {
+                                  _mapController!.animateCamera(
+                                    gmaps.CameraUpdate.newCameraPosition(
+                                      gmaps.CameraPosition(
+                                        target: _currentPosition!,
+                                        zoom: _currentZoom,
+                                        bearing: _currentHeading,
+                                        tilt: 0,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: Icon(
+                              _navigatorMode
+                                  ? Icons.navigation
+                                  : Icons.navigation_outlined,
+                            ),
+                            backgroundColor:
+                                _navigatorMode ? Colors.green : Colors.red,
+                            tooltip: _navigatorMode
+                                ? "Desativar Navigator"
+                                : "Ativar Navigator",
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }

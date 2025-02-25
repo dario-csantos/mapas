@@ -1,8 +1,6 @@
 import '/backend/supabase/supabase.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
-import '/flutter_flow/flutter_flow_widgets.dart';
-import '/flutter_flow/instant_timer.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
@@ -90,237 +88,167 @@ class _HomePageWidgetState extends State<HomePageWidget> {
             FocusScope.of(context).unfocus();
             FocusManager.instance.primaryFocus?.unfocus();
           },
-          child: Scaffold(
-            key: scaffoldKey,
-            backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-            appBar: AppBar(
-              backgroundColor: FlutterFlowTheme.of(context).error,
-              automaticallyImplyLeading: false,
-              title: Text(
-                'GPS MCBDA 1.0 Beta',
-                style: FlutterFlowTheme.of(context).headlineMedium.override(
-                      fontFamily: 'Inter Tight',
-                      color: Colors.white,
-                      fontSize: 22.0,
-                      letterSpacing: 0.0,
-                    ),
+          child: WillPopScope(
+            onWillPop: () async => false,
+            child: Scaffold(
+              key: scaffoldKey,
+              backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
+              appBar: AppBar(
+                backgroundColor: FlutterFlowTheme.of(context).error,
+                automaticallyImplyLeading: false,
+                title: Text(
+                  'GPS MCBDA 1.0 Beta',
+                  style: FlutterFlowTheme.of(context).headlineMedium.override(
+                        fontFamily: 'Inter Tight',
+                        color: Colors.white,
+                        fontSize: 22.0,
+                        letterSpacing: 0.0,
+                      ),
+                ),
+                actions: [],
+                centerTitle: false,
+                elevation: 2.0,
               ),
-              actions: [],
-              centerTitle: false,
-              elevation: 2.0,
-            ),
-            body: SafeArea(
-              top: true,
-              child: Column(
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          height: 700.0,
-                          child: custom_widgets.GoogleMapsLiveRoute(
+              body: SafeArea(
+                top: true,
+                child: Column(
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          Container(
                             width: double.infinity,
-                            height: 700.0,
-                            updateIntervalSeconds: 1,
-                            minDistanceFilter: 3.0,
-                            userRouteColor: Color(0xFF220CEC),
-                            routeColor: FlutterFlowTheme.of(context).error,
-                            showSpeed: true,
-                            showTraffic: false,
-                            initialZoom: 14.0,
-                            mapTilt: 60.0,
-                            showUserRoute: true,
-                            initialLocation: currentUserLocationValue!,
-                            markerLocations: functions.converteStringLatLng(
-                                homePageViewLocationsRowList
-                                    .where((e) => e.customers == true)
-                                    .toList()
-                                    .map((e) => e.location)
-                                    .withoutNulls
-                                    .toList()),
-                            showMarkersLocations: false,
-                            showPolylineSavedRoute: true,
-                            polylineSavedRoute: functions.converteStringLatLng(
-                                homePageViewLocationsRowList
-                                    .where((e) => e.driverStatus == true)
-                                    .toList()
-                                    .map((e) => e.location)
-                                    .withoutNulls
-                                    .toList()),
+                            height: double.infinity,
+                            child: custom_widgets.GoogleMapsLiveRoute(
+                              width: double.infinity,
+                              height: double.infinity,
+                              updateIntervalSeconds: 1,
+                              minDistanceFilter: 3.0,
+                              userRouteColor: Color(0xFF220CEC),
+                              routeColor: FlutterFlowTheme.of(context).error,
+                              showSpeed: true,
+                              showTraffic: false,
+                              initialZoom: 14.0,
+                              mapTilt: 60.0,
+                              showUserRoute: true,
+                              initialLocation: currentUserLocationValue!,
+                              markerLocations: functions.converteStringLatLng(
+                                  homePageViewLocationsRowList
+                                      .where((e) => e.customers == true)
+                                      .toList()
+                                      .map((e) => e.location)
+                                      .withoutNulls
+                                      .toList()),
+                              showMarkersLocations: false,
+                              showPolylineSavedRoute: true,
+                              polylineSavedRoute:
+                                  functions.converteStringLatLng(
+                                      homePageViewLocationsRowList
+                                          .where((e) => e.driverStatus == true)
+                                          .toList()
+                                          .map((e) => e.location)
+                                          .withoutNulls
+                                          .toList()),
+                            ),
                           ),
-                        ),
-                        Align(
-                          alignment: AlignmentDirectional(-0.95, 0.91),
-                          child: FFButtonWidget(
-                            onPressed: () async {
-                              _model.instantTimer?.cancel();
-                            },
-                            text: 'Parar Rastrear',
-                            options: FFButtonOptions(
-                              width: 140.0,
-                              height: 52.0,
-                              padding: EdgeInsetsDirectional.fromSTEB(
-                                  16.0, 0.0, 16.0, 0.0),
-                              iconPadding: EdgeInsetsDirectional.fromSTEB(
-                                  0.0, 0.0, 0.0, 0.0),
-                              color: FlutterFlowTheme.of(context).tertiary,
-                              textStyle: FlutterFlowTheme.of(context)
-                                  .titleSmall
-                                  .override(
-                                    fontFamily: 'Inter Tight',
-                                    color: Colors.white,
-                                    letterSpacing: 0.0,
+                          Align(
+                            alignment: AlignmentDirectional(-0.94, 0.5),
+                            child: Container(
+                              width: 65.9,
+                              height: 74.0,
+                              decoration: BoxDecoration(),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.max,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.max,
+                                    children: [],
                                   ),
-                              elevation: 0.0,
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                          ),
-                        ),
-                        Align(
-                          alignment: AlignmentDirectional(-0.96, 0.73),
-                          child: FFButtonWidget(
-                            onPressed: () async {
-                              currentUserLocationValue =
-                                  await getCurrentUserLocation(
-                                      defaultLocation: LatLng(0.0, 0.0));
-                              _model.instantTimer = InstantTimer.periodic(
-                                duration: Duration(milliseconds: 2000),
-                                callback: (timer) async {
-                                  currentUserLocationValue =
-                                      await getCurrentUserLocation(
-                                          defaultLocation: LatLng(0.0, 0.0));
-                                  _model.valueInsert =
-                                      await TrakingDriverTable().insert({
-                                    'location':
-                                        currentUserLocationValue?.toString(),
-                                    'castomer': false,
-                                    'driver': true,
-                                  });
-                                },
-                                startImmediately: true,
-                              );
-
-                              safeSetState(() {});
-                            },
-                            text: 'Iniciar Rastrear',
-                            options: FFButtonOptions(
-                              width: 140.0,
-                              height: 52.0,
-                              padding: EdgeInsetsDirectional.fromSTEB(
-                                  16.0, 0.0, 16.0, 0.0),
-                              iconPadding: EdgeInsetsDirectional.fromSTEB(
-                                  0.0, 0.0, 0.0, 0.0),
-                              color: Color(0xFF056B5F),
-                              textStyle: FlutterFlowTheme.of(context)
-                                  .titleSmall
-                                  .override(
-                                    fontFamily: 'Inter Tight',
-                                    color: Colors.white,
-                                    letterSpacing: 0.0,
+                                  Row(
+                                    mainAxisSize: MainAxisSize.max,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [],
                                   ),
-                              elevation: 0.0,
-                              borderRadius: BorderRadius.circular(8.0),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        Align(
-                          alignment: AlignmentDirectional(-0.94, 0.5),
-                          child: Container(
-                            width: 65.9,
-                            height: 74.0,
-                            decoration: BoxDecoration(),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.max,
-                                  children: [],
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.max,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [],
-                                ),
-                              ],
+                          Align(
+                            alignment: AlignmentDirectional(-0.94, 0.26),
+                            child: Container(
+                              width: 65.9,
+                              height: 74.0,
+                              decoration: BoxDecoration(),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.max,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.max,
+                                    children: [],
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.max,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        Align(
-                          alignment: AlignmentDirectional(-0.94, 0.26),
-                          child: Container(
-                            width: 65.9,
-                            height: 74.0,
-                            decoration: BoxDecoration(),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.max,
-                                  children: [],
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.max,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [],
-                                ),
-                              ],
+                          Align(
+                            alignment: AlignmentDirectional(-0.94, 0.02),
+                            child: Container(
+                              width: 65.9,
+                              height: 74.0,
+                              decoration: BoxDecoration(),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.max,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.max,
+                                    children: [],
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.max,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        Align(
-                          alignment: AlignmentDirectional(-0.94, 0.02),
-                          child: Container(
-                            width: 65.9,
-                            height: 74.0,
-                            decoration: BoxDecoration(),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.max,
-                                  children: [],
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.max,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [],
-                                ),
-                              ],
+                          Align(
+                            alignment: AlignmentDirectional(-0.94, -0.23),
+                            child: Container(
+                              width: 65.9,
+                              height: 74.0,
+                              decoration: BoxDecoration(),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.max,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.max,
+                                    children: [],
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.max,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        Align(
-                          alignment: AlignmentDirectional(-0.94, -0.23),
-                          child: Container(
-                            width: 65.9,
-                            height: 74.0,
-                            decoration: BoxDecoration(),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.max,
-                                  children: [],
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.max,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
