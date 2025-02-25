@@ -97,7 +97,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 backgroundColor: FlutterFlowTheme.of(context).error,
                 automaticallyImplyLeading: false,
                 title: Text(
-                  'GPS MCBDA 1.0 Beta',
+                  'GPS MCBDA Beta V1.0',
                   style: FlutterFlowTheme.of(context).headlineMedium.override(
                         fontFamily: 'Inter Tight',
                         color: Colors.white,
