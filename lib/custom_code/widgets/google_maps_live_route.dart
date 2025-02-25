@@ -16,6 +16,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 
+import 'package:wakelock_plus/wakelock_plus.dart';
+
 class GoogleMapsLiveRoute extends StatefulWidget {
   const GoogleMapsLiveRoute({
     super.key,
@@ -77,6 +79,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   @override
   void initState() {
     super.initState();
+
+// Ativa o wakelock para manter a tela ligada
+    WakelockPlus.enable();
+
     _currentPosition = gmaps.LatLng(
         widget.initialLocation.latitude, widget.initialLocation.longitude);
 
