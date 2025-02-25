@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 
 import 'index.dart'; // Imports other custom widgets
 
+import 'index.dart'; // Imports other custom widgets
+
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -67,6 +69,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   double _currentHeading = 0.0;
   double _currentZoom = 16.0;
 
+  bool _showTraffic = false;
+  bool _showSavedRoute = false;
+  bool _showMarkers = false;
+  bool _showUserRoute = false;
+
   @override
   void initState() {
     super.initState();
@@ -107,22 +114,23 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   }
 
   void _loadPolylineSavedRoute() {
-    if (!widget.showPolylineSavedRoute) return;
-
-    List<gmaps.LatLng> convertedPoints = widget.polylineSavedRoute
-        .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
-        .toList();
-
     setState(() {
       _polylines.removeWhere((poly) => poly.polylineId.value == "saved_route");
-      _polylines.add(
-        gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("saved_route"),
-          points: convertedPoints,
-          color: widget.routeColor,
-          width: 5,
-        ),
-      );
+
+      if (_showSavedRoute) {
+        List<gmaps.LatLng> convertedPoints = widget.polylineSavedRoute
+            .map((latLng) => gmaps.LatLng(latLng.latitude, latLng.longitude))
+            .toList();
+
+        _polylines.add(
+          gmaps.Polyline(
+            polylineId: const gmaps.PolylineId("saved_route"),
+            points: convertedPoints,
+            color: widget.routeColor,
+            width: 5,
+          ),
+        );
+      }
     });
   }
 
@@ -191,18 +199,19 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   }
 
   void _updateUserPolyline() {
-    if (!widget.showUserRoute) return;
-
     setState(() {
       _polylines.removeWhere((poly) => poly.polylineId.value == "user_route");
-      _polylines.add(
-        gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("user_route"),
-          points: _userRoutePoints,
-          color: widget.userRouteColor,
-          width: 5,
-        ),
-      );
+
+      if (_showUserRoute) {
+        _polylines.add(
+          gmaps.Polyline(
+            polylineId: const gmaps.PolylineId("user_route"),
+            points: _userRoutePoints,
+            color: widget.userRouteColor,
+            width: 5,
+          ),
+        );
+      }
     });
   }
 
@@ -220,7 +229,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   }
 
   Set<gmaps.Marker> _buildMarkers() {
-    if (!widget.showMarkersLocations) return {};
+    if (!_showMarkers) return {};
+    //if (!widget.showMarkersLocations) return {};
 
     return widget.markerLocations.map((location) {
       return gmaps.Marker(
@@ -251,7 +261,85 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           polylines: _polylines,
           myLocationEnabled: false,
           compassEnabled: true,
-          trafficEnabled: widget.showTraffic,
+          trafficEnabled: _showTraffic, // trafficEnabled: widget.showTraffic,
+        ),
+
+        /*Positioned(
+          bottom: 140,
+          right: 100,
+          child:
+
+          ElevatedButton(
+            onPressed: () {
+              print("Botão clicado!");
+            },
+            child: Text("Clique Aqui"),
+          ),
+        ),*/
+
+        Positioned(
+          bottom: 200,
+          right: 20,
+          child: FloatingActionButton(
+            onPressed: () {
+              setState(() {
+                _showSavedRoute =
+                    !_showSavedRoute; // 🔄 Alterna entre ativado e desativado
+              });
+              _loadPolylineSavedRoute(); // 🔥 Atualiza o mapa corretamente
+            },
+            child: Icon(_showSavedRoute ? Icons.route : Icons.route_outlined),
+            backgroundColor: Colors.green,
+          ),
+        ),
+        Positioned(
+          bottom: 260, // 🔥 Ajuste a posição conforme necessário
+          right: 20,
+          child: FloatingActionButton(
+            onPressed: () {
+              setState(() {
+                _showMarkers =
+                    !_showMarkers; // 🔄 Alterna entre ativado e desativado
+              });
+            },
+            child: Icon(_showMarkers
+                ? Icons.location_on
+                : Icons.location_off), // 🔥 Ícone muda conforme o estado
+            backgroundColor: Colors.red,
+          ),
+        ),
+        Positioned(
+          bottom: 320, // 🔥 Ajuste a posição conforme necessário
+          right: 20,
+          child: FloatingActionButton(
+            onPressed: () {
+              setState(() {
+                _showUserRoute =
+                    !_showUserRoute; // 🔄 Alterna entre ativado e desativado
+                _updateUserPolyline(); // 🔥 Atualiza a exibição da rota do usuário
+              });
+            },
+            child: Icon(_showUserRoute
+                ? Icons.timeline
+                : Icons.timeline_outlined), // 🔥 Ícone muda conforme o estado
+            backgroundColor: Colors.blue,
+          ),
+        ),
+        Positioned(
+          bottom: 140, // Ajuste a posição conforme necessário
+          right: 20,
+          child: FloatingActionButton(
+            onPressed: () {
+              setState(() {
+                _showTraffic =
+                    !_showTraffic; // 🔄 Alterna entre ativado e desativado
+              });
+            },
+            child: Icon(_showTraffic
+                ? Icons.traffic
+                : Icons.traffic_outlined), // 🔥 Ícone muda conforme estado
+            backgroundColor: Colors.orange,
+          ),
         ),
         if (widget.showSpeed)
           Positioned(

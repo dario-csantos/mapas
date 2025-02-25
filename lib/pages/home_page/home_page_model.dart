@@ -22,14 +22,6 @@ class HomePageModel extends FlutterFlowModel<HomePageWidget> {
   InstantTimer? instantTimer;
   // Stores action output result for [Backend Call - Insert Row] action in Button widget.
   TrakingDriverRow? valueInsert;
-  // State field(s) for SwitchTransito widget.
-  bool? switchTransitoValue;
-  // State field(s) for SwitchRoutesSave widget.
-  bool? switchRoutesSaveValue;
-  // State field(s) for SwitchMarkers widget.
-  bool? switchMarkersValue;
-  // State field(s) for SwitchRastro widget.
-  bool? switchRastroValue;
 
   @override
   void initState(BuildContext context) {}

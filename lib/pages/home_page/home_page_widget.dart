@@ -31,10 +31,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
-    _model.switchTransitoValue = false;
-    _model.switchRoutesSaveValue = false;
-    _model.switchMarkersValue = false;
-    _model.switchRastroValue = false;
     WidgetsBinding.instance.addPostFrameCallback((_) => safeSetState(() {}));
   }
 
@@ -85,7 +81,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
               backgroundColor: FlutterFlowTheme.of(context).error,
               automaticallyImplyLeading: false,
               title: Text(
-                'GPS MCBDA 1.0.7',
+                'GPS MCBDA 1.0 Beta',
                 style: FlutterFlowTheme.of(context).headlineMedium.override(
                       fontFamily: 'Inter Tight',
                       color: Colors.white,
@@ -116,7 +112,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             userRouteColor: Color(0xFF220CEC),
                             routeColor: FlutterFlowTheme.of(context).error,
                             showSpeed: true,
-                            showTraffic: _model.switchTransitoValue!,
+                            showTraffic: false,
                             initialZoom: 14.0,
                             mapTilt: 60.0,
                             showUserRoute: true,
@@ -128,7 +124,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                     .map((e) => e.location)
                                     .withoutNulls
                                     .toList()),
-                            showMarkersLocations: _model.switchMarkersValue!,
+                            showMarkersLocations: false,
                             showPolylineSavedRoute: true,
                             polylineSavedRoute: functions.converteStringLatLng(
                                 homePageViewLocationsRowList
@@ -225,40 +221,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [
-                                    Switch.adaptive(
-                                      value: _model.switchTransitoValue!,
-                                      onChanged: (newValue) async {
-                                        safeSetState(() => _model
-                                            .switchTransitoValue = newValue);
-                                      },
-                                      activeColor:
-                                          FlutterFlowTheme.of(context).primary,
-                                      activeTrackColor:
-                                          FlutterFlowTheme.of(context).primary,
-                                      inactiveTrackColor:
-                                          FlutterFlowTheme.of(context)
-                                              .alternate,
-                                      inactiveThumbColor:
-                                          FlutterFlowTheme.of(context)
-                                              .secondaryBackground,
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Transito',
-                                      style: FlutterFlowTheme.of(context)
-                                          .bodyMedium
-                                          .override(
-                                            fontFamily: 'Inter',
-                                            letterSpacing: 0.0,
-                                          ),
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                               ],
                             ),
@@ -276,44 +244,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [
-                                    Switch.adaptive(
-                                      value: _model.switchRoutesSaveValue!,
-                                      onChanged: (newValue) async {
-                                        safeSetState(() => _model
-                                            .switchRoutesSaveValue = newValue);
-                                        if (newValue) {
-                                          FFAppState().showRouteSave = true;
-                                          safeSetState(() {});
-                                        }
-                                      },
-                                      activeColor:
-                                          FlutterFlowTheme.of(context).primary,
-                                      activeTrackColor:
-                                          FlutterFlowTheme.of(context).primary,
-                                      inactiveTrackColor:
-                                          FlutterFlowTheme.of(context)
-                                              .alternate,
-                                      inactiveThumbColor:
-                                          FlutterFlowTheme.of(context)
-                                              .secondaryBackground,
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Routes',
-                                      style: FlutterFlowTheme.of(context)
-                                          .bodyMedium
-                                          .override(
-                                            fontFamily: 'Inter',
-                                            letterSpacing: 0.0,
-                                          ),
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                               ],
                             ),
@@ -331,74 +267,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [
-                                    FutureBuilder<List<TrakingDriverRow>>(
-                                      future: TrakingDriverTable().queryRows(
-                                        queryFn: (q) => q.eqOrNull(
-                                          'castomer',
-                                          true,
-                                        ),
-                                      ),
-                                      builder: (context, snapshot) {
-                                        // Customize what your widget looks like when it's loading.
-                                        if (!snapshot.hasData) {
-                                          return Center(
-                                            child: SizedBox(
-                                              width: 50.0,
-                                              height: 50.0,
-                                              child: CircularProgressIndicator(
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                        Color>(
-                                                  FlutterFlowTheme.of(context)
-                                                      .primary,
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                        List<TrakingDriverRow>
-                                            switchMarkersTrakingDriverRowList =
-                                            snapshot.data!;
-
-                                        return Switch.adaptive(
-                                          value: _model.switchMarkersValue!,
-                                          onChanged: (newValue) async {
-                                            safeSetState(() =>
-                                                _model.switchMarkersValue =
-                                                    newValue);
-                                          },
-                                          activeColor:
-                                              FlutterFlowTheme.of(context)
-                                                  .primary,
-                                          activeTrackColor:
-                                              FlutterFlowTheme.of(context)
-                                                  .primary,
-                                          inactiveTrackColor:
-                                              FlutterFlowTheme.of(context)
-                                                  .alternate,
-                                          inactiveThumbColor:
-                                              FlutterFlowTheme.of(context)
-                                                  .secondaryBackground,
-                                        );
-                                      },
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Locais',
-                                      style: FlutterFlowTheme.of(context)
-                                          .bodyMedium
-                                          .override(
-                                            fontFamily: 'Inter',
-                                            letterSpacing: 0.0,
-                                          ),
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                               ],
                             ),
@@ -416,40 +290,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               children: [
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
-                                  children: [
-                                    Switch.adaptive(
-                                      value: _model.switchRastroValue!,
-                                      onChanged: (newValue) async {
-                                        safeSetState(() => _model
-                                            .switchRastroValue = newValue);
-                                      },
-                                      activeColor:
-                                          FlutterFlowTheme.of(context).primary,
-                                      activeTrackColor:
-                                          FlutterFlowTheme.of(context).primary,
-                                      inactiveTrackColor:
-                                          FlutterFlowTheme.of(context)
-                                              .alternate,
-                                      inactiveThumbColor:
-                                          FlutterFlowTheme.of(context)
-                                              .secondaryBackground,
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Rastro',
-                                      style: FlutterFlowTheme.of(context)
-                                          .bodyMedium
-                                          .override(
-                                            fontFamily: 'Inter',
-                                            letterSpacing: 0.0,
-                                          ),
-                                    ),
-                                  ],
+                                  children: [],
                                 ),
                               ],
                             ),
