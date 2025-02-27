@@ -45,4 +45,16 @@ class FFAppState extends ChangeNotifier {
   set isNavigatorMode(bool value) {
     _isNavigatorMode = value;
   }
+
+  int _navigatorElapsedTime = 0;
+  int get navigatorElapsedTime => _navigatorElapsedTime;
+  set navigatorElapsedTime(int value) {
+    _navigatorElapsedTime = value;
+  }
+
+  double _navigatorDistanceTraveled = 0.0;
+  double get navigatorDistanceTraveled => _navigatorDistanceTraveled;
+  set navigatorDistanceTraveled(double value) {
+    _navigatorDistanceTraveled = value;
+  }
 }
