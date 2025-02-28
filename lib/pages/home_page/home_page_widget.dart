@@ -112,7 +112,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               routeColor: FlutterFlowTheme.of(context).error,
                               showSpeed: true,
                               showTraffic: false,
-                              initialZoom: 17.0,
+                              initialZoom: 18.0,
                               mapTilt: 60.0,
                               showUserRoute: true,
                               initialLocation: FFAppState().CoordCasa!,

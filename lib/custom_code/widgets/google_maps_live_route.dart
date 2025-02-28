@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'index.dart'; // Imports other custom widgets
 
 import 'index.dart'; // Imports other custom widgets
+
 import 'index.dart'; // Imports other custom widgets
 import '/custom_code/actions/update_navigator_mode_action.dart'; // Se você usa a Custom Action
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
@@ -77,7 +78,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   bool _showMarkers = false;
   bool _showUserRoute = false;
 
-  bool _navigatorMode = false; // false => modo normal, true => modo navegador
+  bool _navigatorMode = false; // false => Foto 1. true => Fotos 2 ou 3
   bool _trackingMode = false; // indica se rastreamento está ativo
   bool _isTrackingPaused = false; // indica se está pausado
   double _distanceTraveled = 0.0; // Distância total percorrida (em KM)
@@ -85,21 +86,36 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   int _elapsedSecondsNavigator = 0; // Tempo decorrido (em segundos)
   Timer? _timerNavigatorMode; // Timer para atualizar o tempo
 
-  // Variáveis para controle de pausa automática
-  DateTime? _stoppedTimestamp;
-  DateTime? _movingTimestamp;
+  void _startTimerNavigatorMode() {
+    _timerNavigatorMode?.cancel(); // Cancela qualquer timer ativo
+    _timerNavigatorMode = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_trackingMode && !_isTrackingPaused) {
+        setState(() {
+          _elapsedSecondsNavigator++; // Incrementa o tempo
+        });
+      }
+    });
+  }
 
-  // Ícone customizado para o marcador do usuário (SETA.png)
-  gmaps.BitmapDescriptor? _customUserIcon;
+  String _formatElapsedTimeNavigator() {
+    int hours = _elapsedSecondsNavigator ~/ 3600;
+    int minutes = (_elapsedSecondsNavigator % 3600) ~/ 60;
+    int seconds = _elapsedSecondsNavigator % 60;
+
+    if (hours > 0) {
+      return "$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
+    } else {
+      return "$minutes:${seconds.toString().padLeft(2, '0')}";
+    }
+  }
+
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
 
   @override
   void initState() {
     super.initState();
     WakelockPlus.enable();
-
-    // Carrega o ícone customizado
-    _loadCustomUserIcon();
-
     _currentPosition = gmaps.LatLng(
       widget.initialLocation.latitude,
       widget.initialLocation.longitude,
@@ -114,18 +130,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   void dispose() {
     _positionStream?.cancel();
     _updateTimer?.cancel();
-    _timerNavigatorMode?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadCustomUserIcon() async {
-    final icon = await gmaps.BitmapDescriptor.fromAssetImage(
-      const ImageConfiguration(size: Size(144, 144)),
-      'assets/images/SETA.png',
-    );
-    setState(() {
-      _customUserIcon = icon;
-    });
   }
 
   Future<void> _getInitialPosition() async {
@@ -136,6 +141,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       );
     });
 
+    // Move a câmera após 500 ms
     Future.delayed(const Duration(milliseconds: 500), () {
       if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
@@ -201,7 +207,20 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   void _updateUserLocation(Position position) async {
     final newPosition = gmaps.LatLng(position.latitude, position.longitude);
 
-    // Converte a velocidade para km/h
+    if (_lastPosition != null && _trackingMode && !_isTrackingPaused) {
+      double distance = Geolocator.distanceBetween(
+            _lastPosition!.latitude,
+            _lastPosition!.longitude,
+            newPosition.latitude,
+            newPosition.longitude,
+          ) /
+          1000; // Convertendo para KM
+
+      setState(() {
+        _distanceTraveled += distance; // Soma a distância percorrida
+      });
+    }
+
     double speedKmH = position.speed * 3.6;
     if (speedKmH.isNaN || speedKmH < 0) speedKmH = 0.0;
 
@@ -218,40 +237,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentPosition = newPosition;
       _userRoutePoints.add(newPosition);
       _updateUserPolyline();
-      _lastPosition = newPosition;
+      _lastPosition = newPosition; // Atualiza a última posição
     });
 
-    // Lógica para auto pausa e retomada
-    final now = DateTime.now();
-    const speedThreshold = 1.0; // Abaixo de 1 km/h é considerado parado
-
-    if (speedKmH < speedThreshold) {
-      // Moto parada
-      if (_stoppedTimestamp == null) {
-        _stoppedTimestamp = now;
-      }
-      if (now.difference(_stoppedTimestamp!).inSeconds >= 5 &&
-          !_isTrackingPaused) {
-        setState(() {
-          _isTrackingPaused = true;
-        });
-      }
-      _movingTimestamp = null;
-    } else {
-      // Moto em movimento
-      if (_movingTimestamp == null) {
-        _movingTimestamp = now;
-      }
-      if (now.difference(_movingTimestamp!).inSeconds >= 5 &&
-          _isTrackingPaused) {
-        setState(() {
-          _isTrackingPaused = false;
-        });
-      }
-      _stoppedTimestamp = null;
-    }
-
-    // Se estiver no modo navegador, mantém a câmera acompanhando o usuário
+    // Se estiver no modo navegador, mantém a câmera seguindo o usuário
     if (_navigatorMode && _mapController != null) {
       _mapController!.animateCamera(
         gmaps.CameraUpdate.newCameraPosition(
@@ -282,7 +271,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  // Marcador do usuário usando a imagem customizada "SETA.png"
+  // Marker do usuário
   Set<gmaps.Marker> _buildMarkerUser() {
     return {
       gmaps.Marker(
@@ -292,10 +281,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               widget.initialLocation.latitude,
               widget.initialLocation.longitude,
             ),
-        icon: _customUserIcon ??
-            gmaps.BitmapDescriptor.defaultMarkerWithHue(
-              gmaps.BitmapDescriptor.hueBlue,
-            ),
+        icon: _navigatorMode
+            ? gmaps.BitmapDescriptor.defaultMarkerWithHue(
+                gmaps.BitmapDescriptor.hueGreen,
+              )
+            : gmaps.BitmapDescriptor.defaultMarkerWithHue(
+                gmaps.BitmapDescriptor.hueBlue,
+              ),
       ),
     };
   }
@@ -320,15 +312,20 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _navigatorMode = !_navigatorMode;
     });
 
+    // Se tiver Custom Action do FlutterFlow para updateNavigatorMode
     await updateNavigatorModeAction(_navigatorMode);
 
     if (_navigatorMode) {
+      // Entrou no modo navegador => Ativa rastreamento
       _trackingMode = true;
       _isTrackingPaused = false;
-      _distanceTraveled = 0.0;
-      _lastPosition = _currentPosition;
-      _elapsedSecondsNavigator = 0;
-      _startTimerNavigatorMode();
+
+      _distanceTraveled =
+          0.0; // 🔥 Reseta a distância ao iniciar nova navegação
+      _lastPosition = _currentPosition; // 🔥 Define a posição inicial
+
+      _elapsedSecondsNavigator = 0; // 🔥 Reseta tempo ao iniciar
+      _startTimerNavigatorMode(); // 🔥 Inicia contagem de tempo
 
       if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
@@ -343,9 +340,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         );
       }
     } else {
+      // Saiu do modo navegador => Para rastreamento
       _trackingMode = false;
       _isTrackingPaused = false;
-      _timerNavigatorMode?.cancel();
+      _timerNavigatorMode?.cancel(); // 🔥 Para a contagem
       if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
           gmaps.CameraUpdate.newCameraPosition(
@@ -362,21 +360,30 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     setState(() {});
   }
 
-  // Função para pausar/continuar ou parar a viagem
+  // Função para pausar/continuar ou parar viagem
   void _toggleTracking() {
+    // Se estiver rastreando e não estiver pausado => pausa
+    // Se estiver rastreando e estiver pausado => continuar
+    // Se não estiver rastreando => inicia
+    // Mas no fluxo desejado, _navigatorMode define se rastreamento inicia ou não
     setState(() {
       if (_trackingMode && !_isTrackingPaused) {
+        // Está rodando => Pausar
         _isTrackingPaused = true;
       } else if (_trackingMode && _isTrackingPaused) {
+        // Estava pausado => Continuar
         _isTrackingPaused = false;
       } else {
+        // Em teoria, se _navigatorMode for true e _trackingMode for false
+        // a gente poderia iniciar, mas no fluxo atual,
+        // o rastreamento já inicia quando entra no modo navegador
         _trackingMode = true;
         _isTrackingPaused = false;
       }
     });
   }
 
-  // "Parar viagem" – mostra popup e reseta o tracking
+  // "Parar viagem" => mostra popup e volta para estado 1 (sem navegar, sem rastrear)
   void _stopTracking() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -403,33 +410,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         _navigatorMode = false;
         _trackingMode = false;
         _isTrackingPaused = false;
-        _distanceTraveled = 0.0;
+        _distanceTraveled = 0.0; // 🔥 Zera a distância quando parar a viagem
       });
 
+      // Atualiza o FlutterFlow para garantir que isNavigatorMode seja false
       await updateNavigatorModeAction(false);
-    }
-  }
-
-  void _startTimerNavigatorMode() {
-    _timerNavigatorMode?.cancel();
-    _timerNavigatorMode = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_trackingMode && !_isTrackingPaused) {
-        setState(() {
-          _elapsedSecondsNavigator++;
-        });
-      }
-    });
-  }
-
-  String _formatElapsedTimeNavigator() {
-    int hours = _elapsedSecondsNavigator ~/ 3600;
-    int minutes = (_elapsedSecondsNavigator % 3600) ~/ 60;
-    int seconds = _elapsedSecondsNavigator % 60;
-
-    if (hours > 0) {
-      return "$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
-    } else {
-      return "$minutes:${seconds.toString().padLeft(2, '0')}";
     }
   }
 
@@ -499,9 +484,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
 
           // DRAGGABLE SHEET
           DraggableScrollableSheet(
-            initialChildSize: 0.26,
+            controller: _sheetController,
+            initialChildSize: 0.26, // Ajuste pra caber as linhas
             minChildSize: 0.12,
-            maxChildSize: 0.29,
+            maxChildSize: 0.29, // Ajuste se quiser expandir mais
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
@@ -520,6 +506,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                   controller: scrollController,
                   child: Column(
                     children: [
+                      // Barra de puxar
                       Container(
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         width: 40,
@@ -530,6 +517,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                         ),
                       ),
                       const SizedBox(height: 8),
+
+                      // ESTADO 1: se !_navigatorMode => exibe só "Navegar"
                       if (!_navigatorMode)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -559,17 +548,21 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                           ),
                         )
                       else
+                        // ESTADO 2 e 3: se _navigatorMode => exibe estatísticas (se tracking ativo) e botões
                         Column(
                           children: [
+                            // Se _trackingMode está ativo => exibe estatísticas
+                            // Se estiver pausado ou não, continua mostrando
                             if (_trackingMode) ...[
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceEvenly,
                                 children: [
+                                  // Distância
                                   Column(
                                     children: [
                                       Text(
-                                        "${_distanceTraveled.toStringAsFixed(1)}",
+                                        "${_distanceTraveled.toStringAsFixed(1)}", // 🔥 Exibe a distância com 1 casa decimal
                                         style: const TextStyle(
                                             color: Colors.white, fontSize: 20),
                                       ),
@@ -580,6 +573,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                       ),
                                     ],
                                   ),
+                                  // Velocidade
                                   Column(
                                     children: [
                                       Text(
@@ -594,10 +588,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                       ),
                                     ],
                                   ),
+                                  // Tempo (A ser implementado depois)
                                   Column(
                                     children: [
                                       Text(
-                                        _formatElapsedTimeNavigator(),
+                                        _formatElapsedTimeNavigator(), // 🔥 Exibe o tempo formatado
                                         style: const TextStyle(
                                             color: Colors.white, fontSize: 20),
                                       ),
@@ -612,6 +607,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                               ),
                               const SizedBox(height: 16),
                             ],
+
+                            // Se rastreamento NÃO estiver pausado => mostra "Pausar"
+                            // Se rastreamento estiver pausado => mostra "Continuar" e "Parar viagem"
                             if (_trackingMode && !_isTrackingPaused)
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -627,7 +625,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                 ),
                                 onPressed: () {
                                   setState(() {
-                                    _isTrackingPaused = true;
+                                    _isTrackingPaused = true; // 🔥 Apenas pausa
                                   });
                                 },
                                 child: const Text(
@@ -643,6 +641,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceEvenly,
                                 children: [
+                                  // Botão "Continuar"
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.green,
@@ -657,7 +656,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                     ),
                                     onPressed: () {
                                       setState(() {
-                                        _isTrackingPaused = false;
+                                        _isTrackingPaused =
+                                            false; // 🔥 Continua a contagem
                                       });
                                     },
                                     child: const Text(
@@ -668,6 +668,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                       ),
                                     ),
                                   ),
+                                  // Botão "Parar viagem"
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.orange,
@@ -681,7 +682,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                       minimumSize: const Size(140, 56),
                                     ),
                                     onPressed: () {
-                                      _stopTracking();
+                                      _stopTracking(); // exibe popup e volta pro estado 1
                                     },
                                     child: const Text(
                                       "Parar viagem",
@@ -694,10 +695,16 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                 ],
                               )
                             else
+                              // Se chegou aqui, é um caso intermediário:
+                              // _trackingMode == false => mas no fluxo desejado,
+                              // se _navigatorMode = true, já inicia tracking => ignore
                               const SizedBox(),
                           ],
                         ),
+
                       const SizedBox(height: 16),
+
+                      // Quatro FABs numa linha
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -761,6 +768,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 10),
                     ],
                   ),
