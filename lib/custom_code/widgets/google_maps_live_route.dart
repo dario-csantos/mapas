@@ -89,36 +89,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   DateTime? _stoppedTimestamp;
   DateTime? _movingTimestamp;
 
-  void _startTimerNavigatorMode() {
-    _timerNavigatorMode?.cancel();
-    _timerNavigatorMode = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_trackingMode && !_isTrackingPaused) {
-        setState(() {
-          _elapsedSecondsNavigator++;
-        });
-      }
-    });
-  }
-
-  String _formatElapsedTimeNavigator() {
-    int hours = _elapsedSecondsNavigator ~/ 3600;
-    int minutes = (_elapsedSecondsNavigator % 3600) ~/ 60;
-    int seconds = _elapsedSecondsNavigator % 60;
-
-    if (hours > 0) {
-      return "$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
-    } else {
-      return "$minutes:${seconds.toString().padLeft(2, '0')}";
-    }
-  }
-
-  final DraggableScrollableController _sheetController =
-      DraggableScrollableController();
+  // Ícone customizado para o marcador do usuário (SETA.png)
+  gmaps.BitmapDescriptor? _customUserIcon;
 
   @override
   void initState() {
     super.initState();
     WakelockPlus.enable();
+
+    // Carrega o ícone customizado
+    _loadCustomUserIcon();
+
     _currentPosition = gmaps.LatLng(
       widget.initialLocation.latitude,
       widget.initialLocation.longitude,
@@ -135,6 +116,16 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _updateTimer?.cancel();
     _timerNavigatorMode?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadCustomUserIcon() async {
+    final icon = await gmaps.BitmapDescriptor.fromAssetImage(
+      const ImageConfiguration(size: Size(144, 144)),
+      'assets/images/SETA.png',
+    );
+    setState(() {
+      _customUserIcon = icon;
+    });
   }
 
   Future<void> _getInitialPosition() async {
@@ -221,7 +212,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentZoom = await _mapController!.getZoomLevel();
     }
 
-    // Atualiza estado e rota
     setState(() {
       _currentSpeed = speedKmH;
       _currentHeading = heading;
@@ -261,7 +251,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _stoppedTimestamp = null;
     }
 
-    // Se estiver no modo navegador, mantém a câmera seguindo o usuário
+    // Se estiver no modo navegador, mantém a câmera acompanhando o usuário
     if (_navigatorMode && _mapController != null) {
       _mapController!.animateCamera(
         gmaps.CameraUpdate.newCameraPosition(
@@ -292,7 +282,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  // Marker do usuário
+  // Marcador do usuário usando a imagem customizada "SETA.png"
   Set<gmaps.Marker> _buildMarkerUser() {
     return {
       gmaps.Marker(
@@ -302,13 +292,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               widget.initialLocation.latitude,
               widget.initialLocation.longitude,
             ),
-        icon: _navigatorMode
-            ? gmaps.BitmapDescriptor.defaultMarkerWithHue(
-                gmaps.BitmapDescriptor.hueGreen,
-              )
-            : gmaps.BitmapDescriptor.defaultMarkerWithHue(
-                gmaps.BitmapDescriptor.hueBlue,
-              ),
+        icon: _customUserIcon ??
+            gmaps.BitmapDescriptor.defaultMarkerWithHue(
+              gmaps.BitmapDescriptor.hueBlue,
+            ),
       ),
     };
   }
@@ -375,7 +362,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     setState(() {});
   }
 
-  // Função para pausar/continuar ou parar viagem
+  // Função para pausar/continuar ou parar a viagem
   void _toggleTracking() {
     setState(() {
       if (_trackingMode && !_isTrackingPaused) {
@@ -389,7 +376,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  // "Parar viagem" => mostra popup e reseta o tracking
+  // "Parar viagem" – mostra popup e reseta o tracking
   void _stopTracking() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -420,6 +407,29 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       });
 
       await updateNavigatorModeAction(false);
+    }
+  }
+
+  void _startTimerNavigatorMode() {
+    _timerNavigatorMode?.cancel();
+    _timerNavigatorMode = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_trackingMode && !_isTrackingPaused) {
+        setState(() {
+          _elapsedSecondsNavigator++;
+        });
+      }
+    });
+  }
+
+  String _formatElapsedTimeNavigator() {
+    int hours = _elapsedSecondsNavigator ~/ 3600;
+    int minutes = (_elapsedSecondsNavigator % 3600) ~/ 60;
+    int seconds = _elapsedSecondsNavigator % 60;
+
+    if (hours > 0) {
+      return "$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
+    } else {
+      return "$minutes:${seconds.toString().padLeft(2, '0')}";
     }
   }
 
@@ -489,7 +499,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
 
           // DRAGGABLE SHEET
           DraggableScrollableSheet(
-            controller: _sheetController,
             initialChildSize: 0.26,
             minChildSize: 0.12,
             maxChildSize: 0.29,
