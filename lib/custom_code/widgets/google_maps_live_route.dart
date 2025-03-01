@@ -16,6 +16,8 @@ import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 
 import 'index.dart'; // Imports other custom widgets
+
+import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 import '/custom_code/actions/update_navigator_mode_action.dart'; // Se você usa a Custom Action
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
@@ -285,10 +287,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       // Calcular distância apenas se o rastreamento não estiver pausado
       if (!_isTrackingPaused && _lastPosition != null) {
         final distanceInMeters = Geolocator.distanceBetween(
-            _lastPosition!.latitude,
-            _lastPosition!.longitude,
-            newPosition.latitude,
-            newPosition.longitude);
+          _lastPosition!.latitude,
+          _lastPosition!.longitude,
+          newPosition.latitude,
+          newPosition.longitude,
+        );
 
         _distanceTraveled += (distanceInMeters / 1000); // Adicionando em km
       }
@@ -311,6 +314,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         setState(() {
           _isTrackingPaused = true;
         });
+        await updateNavigatorModeAction(
+            false); // Notifica que o modo de navegação está inativo
+        await updateTrackingModeAction(
+            false); // Notifica que o rastreamento está pausado
       }
       _movingTimestamp = null;
     } else {
@@ -323,6 +330,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         setState(() {
           _isTrackingPaused = false;
         });
+        await updateNavigatorModeAction(
+            _navigatorMode); // Notifica o estado atual do modo de navegação
+        await updateTrackingModeAction(
+            _trackingMode); // Notifica o estado atual do rastreamento
       }
       _stoppedTimestamp = null;
     }
@@ -440,17 +451,33 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   }
 
   // Função para pausar/continuar ou parar viagem
-  void _toggleTracking() {
+  void _toggleTracking() async {
     setState(() {
       if (_trackingMode && !_isTrackingPaused) {
+        // Pausa o rastreamento
         _isTrackingPaused = true;
       } else if (_trackingMode && _isTrackingPaused) {
+        // Retoma o rastreamento
         _isTrackingPaused = false;
       } else {
+        // Inicia o rastreamento
         _trackingMode = true;
         _isTrackingPaused = false;
       }
     });
+
+    // Notifica o FlutterFlow sobre a mudança de estado
+    if (_isTrackingPaused) {
+      await updateNavigatorModeAction(
+          false); // Pausa: notifica false para o modo de navegação
+      await updateTrackingModeAction(
+          false); // Pausa: notifica false para o rastreamento
+    } else {
+      await updateNavigatorModeAction(
+          _navigatorMode); // Retomada: notifica o estado atual do modo de navegação
+      await updateTrackingModeAction(
+          _trackingMode); // Retomada: notifica o estado atual do rastreamento
+    }
   }
 
   // "Parar viagem" => mostra popup e reseta o tracking
@@ -484,6 +511,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       });
 
       await updateNavigatorModeAction(false);
+      await updateTrackingModeAction(false);
     }
   }
 
@@ -743,10 +771,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                   ),
                                   minimumSize: const Size(300, 56),
                                 ),
-                                onPressed: () {
+                                onPressed: () async {
                                   setState(() {
-                                    _isTrackingPaused = true;
+                                    _isTrackingPaused =
+                                        true; // Pausa o rastreamento
                                   });
+                                  await updateTrackingModeAction(
+                                      false); // Notifica o FlutterFlow que o rastreamento está pausado
                                 },
                                 child: const Text(
                                   "Pausar",
@@ -773,10 +804,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                       ),
                                       minimumSize: const Size(140, 56),
                                     ),
-                                    onPressed: () {
+                                    onPressed: () async {
                                       setState(() {
-                                        _isTrackingPaused = false;
+                                        _isTrackingPaused =
+                                            false; // Retoma o rastreamento
                                       });
+                                      await updateTrackingModeAction(
+                                          true); // Notifica o FlutterFlow que o rastreamento está ativo
                                     },
                                     child: const Text(
                                       "Continuar",
