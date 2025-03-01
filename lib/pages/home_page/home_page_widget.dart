@@ -99,7 +99,9 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 backgroundColor: FlutterFlowTheme.of(context).error,
                 automaticallyImplyLeading: false,
                 title: Text(
-                  'GPS MCBDA Beta V1.0',
+                  FFAppState().isTrackingMode == true
+                      ? 'GPS MCBDA Beta V1.0'
+                      : 'GPS MCBDA',
                   style: FlutterFlowTheme.of(context).headlineMedium.override(
                         fontFamily: 'Inter Tight',
                         color: Colors.white,
@@ -240,16 +242,15 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                   Row(
                                     mainAxisSize: MainAxisSize.max,
                                     children: [
-                                      Text(
-                                        FFAppState().isNavigatorMode.toString(),
-                                        style: FlutterFlowTheme.of(context)
-                                            .bodyMedium
-                                            .override(
-                                              fontFamily: 'Inter',
-                                              letterSpacing: 0.0,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
+                                      if (FFAppState().isTrackingMode == true)
+                                        Container(
+                                          width: 100.0,
+                                          height: 100.0,
+                                          decoration: BoxDecoration(
+                                            color: FlutterFlowTheme.of(context)
+                                                .tertiary,
+                                          ),
+                                        ),
                                     ],
                                   ),
                                   Row(
