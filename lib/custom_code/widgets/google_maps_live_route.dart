@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'index.dart'; // Imports other custom widgets
 
 import 'index.dart'; // Imports other custom widgets
+
+import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 import '/custom_code/actions/update_navigator_mode_action.dart'; // Se você usa a Custom Action
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
@@ -89,6 +91,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   DateTime? _stoppedTimestamp;
   DateTime? _movingTimestamp;
 
+  gmaps.BitmapDescriptor? _customUserIcon;
+
   void _startTimerNavigatorMode() {
     _timerNavigatorMode?.cancel();
     _timerNavigatorMode = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -127,6 +131,24 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _getInitialPosition();
     _startTracking();
     _loadPolylineSavedRoute();
+
+    // Carrega o ícone personalizado
+    _loadCustomUserIcon();
+
+    _currentPosition = gmaps.LatLng(
+      widget.initialLocation.latitude,
+      widget.initialLocation.longitude,
+    );
+  }
+
+  Future<void> _loadCustomUserIcon() async {
+    final icon = await gmaps.BitmapDescriptor.fromAssetImage(
+      const ImageConfiguration(size: Size(144, 144)),
+      'assets/images/SETA.png',
+    );
+    setState(() {
+      _customUserIcon = icon;
+    });
   }
 
   @override
@@ -244,6 +266,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           !_isTrackingPaused) {
         setState(() {
           _isTrackingPaused = true;
+          //_navigatorMode = false;
+          //_trackingMode = false;
+          //_stopTracking();
         });
       }
       _movingTimestamp = null;
@@ -256,6 +281,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           _isTrackingPaused) {
         setState(() {
           _isTrackingPaused = false;
+          //_navigatorMode = true;
         });
       }
       _stoppedTimestamp = null;
@@ -302,13 +328,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               widget.initialLocation.latitude,
               widget.initialLocation.longitude,
             ),
-        icon: _navigatorMode
-            ? gmaps.BitmapDescriptor.defaultMarkerWithHue(
-                gmaps.BitmapDescriptor.hueGreen,
-              )
-            : gmaps.BitmapDescriptor.defaultMarkerWithHue(
-                gmaps.BitmapDescriptor.hueBlue,
-              ),
+        icon: _customUserIcon ??
+            gmaps.BitmapDescriptor.defaultMarkerWithHue(
+              gmaps.BitmapDescriptor.hueBlue,
+            ),
       ),
     };
   }
@@ -490,9 +513,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           // DRAGGABLE SHEET
           DraggableScrollableSheet(
             controller: _sheetController,
-            initialChildSize: 0.26,
+            initialChildSize: 0.29,
             minChildSize: 0.12,
-            maxChildSize: 0.29,
+            maxChildSize: 0.30,
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
@@ -520,7 +543,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(
+                          height: 8), //Espaço abaixo do puxador e Navegar
                       if (!_navigatorMode)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -562,7 +586,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                       Text(
                                         "${_distanceTraveled.toStringAsFixed(1)}",
                                         style: const TextStyle(
-                                            color: Colors.white, fontSize: 20),
+                                            color: Colors.white, fontSize: 25),
                                       ),
                                       const Text(
                                         "km",
@@ -576,7 +600,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                       Text(
                                         "${_currentSpeed.toStringAsFixed(1)} km/h",
                                         style: const TextStyle(
-                                            color: Colors.white, fontSize: 20),
+                                            color: Colors.white, fontSize: 25),
                                       ),
                                       const Text(
                                         "km/h",
@@ -590,7 +614,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                       Text(
                                         _formatElapsedTimeNavigator(),
                                         style: const TextStyle(
-                                            color: Colors.white, fontSize: 20),
+                                            color: Colors.white, fontSize: 25),
                                       ),
                                       const Text(
                                         "tempo",
@@ -601,7 +625,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(
+                                  height:
+                                      25), //Espaço abaixo das estatisticas e continuar/parar
                             ],
                             if (_trackingMode && !_isTrackingPaused)
                               ElevatedButton(
@@ -688,7 +714,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                               const SizedBox(),
                           ],
                         ),
-                      const SizedBox(height: 16),
+                      const SizedBox(
+                          height:
+                              16), //Espaço entre bt continuar/Parar e botoes redondos
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -752,7 +780,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 5),
                     ],
                   ),
                 ),

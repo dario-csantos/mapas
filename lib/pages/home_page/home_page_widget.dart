@@ -4,6 +4,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
@@ -21,15 +22,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
   late HomePageModel _model;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
-  LatLng? currentUserLocationValue;
 
   @override
   void initState() {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
-    getCurrentUserLocation(defaultLocation: LatLng(0.0, 0.0), cached: true)
-        .then((loc) => safeSetState(() => currentUserLocationValue = loc));
     WidgetsBinding.instance.addPostFrameCallback((_) => safeSetState(() {}));
   }
 
@@ -42,22 +40,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (currentUserLocationValue == null) {
-      return Container(
-        color: FlutterFlowTheme.of(context).primaryBackground,
-        child: Center(
-          child: SizedBox(
-            width: 50.0,
-            height: 50.0,
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                FlutterFlowTheme.of(context).primary,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    context.watch<FFAppState>();
 
     return FutureBuilder<List<ViewLocationsRow>>(
       future: ViewLocationsTable().queryRows(
@@ -117,39 +100,43 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                     Expanded(
                       child: Stack(
                         children: [
-                          Container(
-                            width: double.infinity,
-                            height: double.infinity,
-                            child: custom_widgets.GoogleMapsLiveRoute(
+                          Align(
+                            alignment: AlignmentDirectional(0.0, 0.0),
+                            child: Container(
                               width: double.infinity,
                               height: double.infinity,
-                              updateIntervalSeconds: 1,
-                              minDistanceFilter: 3.0,
-                              userRouteColor: Color(0xFF220CEC),
-                              routeColor: FlutterFlowTheme.of(context).error,
-                              showSpeed: true,
-                              showTraffic: false,
-                              initialZoom: 18.0,
-                              mapTilt: 60.0,
-                              showUserRoute: true,
-                              initialLocation: currentUserLocationValue!,
-                              markerLocations: functions.converteStringLatLng(
-                                  homePageViewLocationsRowList
-                                      .where((e) => e.customers == true)
-                                      .toList()
-                                      .map((e) => e.location)
-                                      .withoutNulls
-                                      .toList()),
-                              showMarkersLocations: false,
-                              showPolylineSavedRoute: true,
-                              polylineSavedRoute:
-                                  functions.converteStringLatLng(
-                                      homePageViewLocationsRowList
-                                          .where((e) => e.driverStatus == true)
-                                          .toList()
-                                          .map((e) => e.location)
-                                          .withoutNulls
-                                          .toList()),
+                              child: custom_widgets.GoogleMapsLiveRoute(
+                                width: double.infinity,
+                                height: double.infinity,
+                                updateIntervalSeconds: 1,
+                                minDistanceFilter: 3.0,
+                                userRouteColor: Color(0xFF220CEC),
+                                routeColor: FlutterFlowTheme.of(context).error,
+                                showSpeed: true,
+                                showTraffic: true,
+                                initialZoom: 16.99,
+                                mapTilt: 60.0,
+                                showUserRoute: true,
+                                initialLocation: FFAppState().CoordCasa!,
+                                markerLocations: functions.converteStringLatLng(
+                                    homePageViewLocationsRowList
+                                        .where((e) => e.customers == true)
+                                        .toList()
+                                        .map((e) => e.location)
+                                        .withoutNulls
+                                        .toList()),
+                                showMarkersLocations: true,
+                                showPolylineSavedRoute: true,
+                                polylineSavedRoute:
+                                    functions.converteStringLatLng(
+                                        homePageViewLocationsRowList
+                                            .where(
+                                                (e) => e.driverStatus == true)
+                                            .toList()
+                                            .map((e) => e.location)
+                                            .withoutNulls
+                                            .toList()),
+                              ),
                             ),
                           ),
                           Align(
