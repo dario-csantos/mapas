@@ -57,4 +57,10 @@ class FFAppState extends ChangeNotifier {
   set navigatorDistanceTraveled(double value) {
     _navigatorDistanceTraveled = value;
   }
+
+  bool _isTrackingMode = false;
+  bool get isTrackingMode => _isTrackingMode;
+  set isTrackingMode(bool value) {
+    _isTrackingMode = value;
+  }
 }

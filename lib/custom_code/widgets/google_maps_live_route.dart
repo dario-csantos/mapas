@@ -14,6 +14,8 @@ import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 
 import 'index.dart'; // Imports other custom widgets
+
+import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 import '/custom_code/actions/update_navigator_mode_action.dart'; // Se você usa a Custom Action
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
@@ -92,6 +94,39 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   DateTime? _movingTimestamp;
 
   gmaps.BitmapDescriptor? _customUserIcon;
+
+  // Função para centralizar o mapa na localização atual
+  Future<void> _centerMapOnUserLocation() async {
+    // Verifica se a permissão de localização foi concedida
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      print("❌ Permissão negada.");
+      return;
+    }
+
+    // Obtém a localização atual
+    final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    final latLng = gmaps.LatLng(position.latitude, position.longitude);
+
+    // Atualiza a posição atual
+    setState(() {
+      _currentPosition = latLng;
+    });
+
+    // Anima a câmera para a nova posição
+    if (_mapController != null) {
+      _mapController!.animateCamera(
+        gmaps.CameraUpdate.newCameraPosition(
+          gmaps.CameraPosition(
+            target: latLng,
+            zoom: 16.99, // Você pode ajustar o zoom aqui
+          ),
+        ),
+      );
+    }
+  }
 
   void _startTimerNavigatorMode() {
     _timerNavigatorMode?.cancel();
@@ -235,7 +270,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     // Converte a velocidade para km/h
     double speedKmH = position.speed * 3.6;
     if (speedKmH.isNaN || speedKmH < 0) speedKmH = 0.0;
-
     double heading = position.heading;
     if (heading.isNaN || heading < 0) heading = _currentHeading;
 
@@ -243,20 +277,30 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentZoom = await _mapController!.getZoomLevel();
     }
 
-    // Atualiza estado e rota
     setState(() {
       _currentSpeed = speedKmH;
       _currentHeading = heading;
       _currentPosition = newPosition;
+
+      // Calcular distância apenas se o rastreamento não estiver pausado
+      if (!_isTrackingPaused && _lastPosition != null) {
+        final distanceInMeters = Geolocator.distanceBetween(
+            _lastPosition!.latitude,
+            _lastPosition!.longitude,
+            newPosition.latitude,
+            newPosition.longitude);
+
+        _distanceTraveled += (distanceInMeters / 1000); // Adicionando em km
+      }
+
       _userRoutePoints.add(newPosition);
       _updateUserPolyline();
-      _lastPosition = newPosition;
+      _lastPosition = newPosition; // Atualiza a última posição
     });
 
     // Lógica para auto pausa e retomada
     final now = DateTime.now();
     const speedThreshold = 1.0; // Abaixo de 1 km/h é considerado parado
-
     if (speedKmH < speedThreshold) {
       // Moto parada
       if (_stoppedTimestamp == null) {
@@ -266,9 +310,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           !_isTrackingPaused) {
         setState(() {
           _isTrackingPaused = true;
-          //_navigatorMode = false;
-          //_trackingMode = false;
-          //_stopTracking();
         });
       }
       _movingTimestamp = null;
@@ -281,7 +322,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           _isTrackingPaused) {
         setState(() {
           _isTrackingPaused = false;
-          //_navigatorMode = true;
         });
       }
       _stoppedTimestamp = null;
@@ -357,6 +397,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
 
     await updateNavigatorModeAction(_navigatorMode);
+    await updateTrackingModeAction(_navigatorMode);
 
     if (_navigatorMode) {
       _trackingMode = true;
@@ -470,10 +511,69 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                 : EdgeInsets.zero,
             markers: _buildMarkerUser().union(_buildMarkers()),
             polylines: _polylines,
-            myLocationEnabled: false,
+            myLocationEnabled: true,
             compassEnabled: true,
             trafficEnabled: _showTraffic,
+            zoomControlsEnabled: false,
+            tiltGesturesEnabled: true,
           ),
+
+          //exemplo de botao redondo na tela
+          /* Positioned(
+            top: 80,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: () {
+                _getInitialPosition(); // 🔥 Centraliza o mapa
+              },
+              child: Icon(_showSavedRoute ? Icons.route : Icons.route_outlined),
+              backgroundColor: Colors.green,
+            ),
+          ),*/
+
+          Positioned(
+            bottom: 230,
+            left: 16,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 0),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black.withOpacity(0.7),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 0),
+                  minimumSize: const Size(125, 56),
+                ),
+                onPressed: () {
+                  _centerMapOnUserLocation(); // 🔥 Centraliza o mapa
+                },
+                icon: const Icon(
+                  Icons.navigation,
+                  color: Colors.white,
+                ),
+                label: const Text(
+                  "Recentrar",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          /*Positioned(
+            bottom: 230,
+            left: 16,
+            child:
+            ElevatedButton(
+              onPressed: () {
+                _getInitialPosition(); // 🔥 Centraliza o mapa
+              },
+              child: Text("Centralizar"),
+            ),
+          ),*/
 
           // VELOCIDADE
           if (widget.showSpeed)
@@ -513,13 +613,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           // DRAGGABLE SHEET
           DraggableScrollableSheet(
             controller: _sheetController,
-            initialChildSize: 0.29,
+            initialChildSize: 0.30,
             minChildSize: 0.12,
             maxChildSize: 0.30,
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
-                  color: Colors.black,
+                  color: Colors.black.withOpacity(0.7),
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(16)),
                   boxShadow: [
@@ -559,6 +659,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                             ),
                             onPressed: () {
                               _toggleNavigatorMode();
+                              _getInitialPosition();
                             },
                             icon: const Icon(
                               Icons.navigation,
