@@ -121,10 +121,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             alignment: AlignmentDirectional(0.0, 0.0),
                             child: Container(
                               width: double.infinity,
-                              height: 700.0,
+                              height: double.infinity,
                               child: custom_widgets.GoogleMapsLiveRoute(
                                 width: double.infinity,
-                                height: 700.0,
+                                height: double.infinity,
                                 updateIntervalSeconds: 1,
                                 minDistanceFilter: 3.0,
                                 userRouteColor: Color(0xFF220CEC),
@@ -156,7 +156,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 autoPauseDelaySeconds: 5,
                                 maxPauseDurationMinutes: 2,
                                 autoResumeDelayMinutes: 1,
-                                autoResumeMinDistance: 4.0,
+                                autoResumeMinDistance: 1.0,
                                 stopSpeedThreshold: 1.0,
                               ),
                             ),

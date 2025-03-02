@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 // Begin custom widget code
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
+import 'index.dart'; // Imports other custom widgets
+
 import '/flutter_flow/lat_lng.dart'; // Para o tipo LatLng do FlutterFlow
 import 'index.dart'; // Imports other custom widgets
 
@@ -313,7 +315,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           await updateTrackingModeAction(false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text("Pausa automática ativada"),
+              content: Container(
+                height: 80, // altura desejada
+                alignment: Alignment.center,
+                child: const Text("Pausa automática ativada"),
+              ),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -353,7 +359,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               }
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: const Text("Tracking retomado automaticamente"),
+                  content: Container(
+                    height: 80, // altura desejada
+                    alignment: Alignment.center,
+                    child: const Text("Tracking retomado automaticamente"),
+                  ),
                   duration: const Duration(seconds: 2),
                 ),
               );
