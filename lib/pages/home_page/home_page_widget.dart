@@ -4,7 +4,6 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
@@ -43,7 +42,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    context.watch<FFAppState>();
     if (currentUserLocationValue == null) {
       return Container(
         color: FlutterFlowTheme.of(context).primaryBackground,
@@ -99,9 +97,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 backgroundColor: FlutterFlowTheme.of(context).error,
                 automaticallyImplyLeading: false,
                 title: Text(
-                  FFAppState().isTrackingMode == true
-                      ? 'GPS MCBDA Beta V1.0'
-                      : 'GPS MCBDA',
+                  'GPS MCBDA Beta V1.0',
                   style: FlutterFlowTheme.of(context).headlineMedium.override(
                         fontFamily: 'Inter Tight',
                         color: Colors.white,
@@ -125,10 +121,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             alignment: AlignmentDirectional(0.0, 0.0),
                             child: Container(
                               width: double.infinity,
-                              height: double.infinity,
+                              height: 700.0,
                               child: custom_widgets.GoogleMapsLiveRoute(
                                 width: double.infinity,
-                                height: double.infinity,
+                                height: 700.0,
                                 updateIntervalSeconds: 1,
                                 minDistanceFilter: 3.0,
                                 userRouteColor: Color(0xFF220CEC),
@@ -157,6 +153,11 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                             .map((e) => e.location)
                                             .withoutNulls
                                             .toList()),
+                                autoPauseDelaySeconds: 5,
+                                maxPauseDurationMinutes: 6,
+                                autoResumeDelayMinutes: 5,
+                                autoResumeMinDistance: 4.0,
+                                stopSpeedThreshold: 1.0,
                               ),
                             ),
                           ),
@@ -241,17 +242,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 children: [
                                   Row(
                                     mainAxisSize: MainAxisSize.max,
-                                    children: [
-                                      if (FFAppState().isTrackingMode == true)
-                                        Container(
-                                          width: 100.0,
-                                          height: 100.0,
-                                          decoration: BoxDecoration(
-                                            color: FlutterFlowTheme.of(context)
-                                                .tertiary,
-                                          ),
-                                        ),
-                                    ],
+                                    children: [],
                                   ),
                                   Row(
                                     mainAxisSize: MainAxisSize.max,
