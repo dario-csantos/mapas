@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 // Begin custom widget code
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
-import '/flutter_flow/lat_lng.dart'; // Import para o tipo LatLng do FlutterFlow
+import '/flutter_flow/lat_lng.dart'; // Para o tipo LatLng do FlutterFlow
 import 'index.dart'; // Imports other custom widgets
 
 import 'index.dart'; // Imports other custom widgets
@@ -18,7 +18,7 @@ import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
 import 'index.dart'; // Imports other custom widgets
-import '/custom_code/actions/update_navigator_mode_action.dart'; // Se você usa a Custom Action
+import '/custom_code/actions/update_navigator_mode_action.dart'; // Custom Action
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -29,7 +29,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     super.key,
     this.width,
     this.height,
-    required this.initialLocation, // Agora é do tipo LatLng (FlutterFlow)
+    required this.initialLocation, // Tipo LatLng do FlutterFlow
     required this.updateIntervalSeconds,
     required this.minDistanceFilter,
     required this.userRouteColor,
@@ -43,18 +43,18 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     required this.showPolylineSavedRoute,
     this.markerLocations = const [],
     this.polylineSavedRoute = const [],
-    // Novos parâmetros com valores já definidos:
-    this.autoPauseDelaySeconds = 5, // 5 segundos para entrar em pausa
+    // Parâmetros para customizar a lógica de pausa/retomada (para teste):
+    this.autoPauseDelaySeconds = 1, // 1 segundo para entrar em pausa
     this.maxPauseDurationMinutes =
-        30, // 30 minutos de pausa máxima antes de auto-stop
-    this.autoResumeDelayMinutes = 5, // 5 minutos em pausa para permitir retomar
-    this.autoResumeMinDistance = 50.0, // 50 metros de deslocamento para retomar
+        1, // (não usado) 1 minuto de pausa máxima (agora desabilitado)
+    this.autoResumeDelayMinutes = 1, // 1 minuto em pausa para permitir retomar
+    this.autoResumeMinDistance = 1.0, // 1 metro para retomar
     this.stopSpeedThreshold = 1.0, // 1 km/h como limiar para considerar parado
   });
 
   final double? width;
   final double? height;
-  final LatLng initialLocation; // Agora usando LatLng do FlutterFlow
+  final LatLng initialLocation; // FlutterFlow LatLng
   final int updateIntervalSeconds;
   final double minDistanceFilter;
   final Color userRouteColor;
@@ -66,10 +66,10 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final bool showMarkersLocations;
   final bool showUserRoute;
   final bool showPolylineSavedRoute;
-  final List<LatLng> markerLocations; // LatLng do FlutterFlow
-  final List<LatLng> polylineSavedRoute; // LatLng do FlutterFlow
+  final List<LatLng> markerLocations; // FlutterFlow LatLng
+  final List<LatLng> polylineSavedRoute; // FlutterFlow LatLng
 
-  // Parâmetros para customizar a lógica de pausa/retomada (com valores fixos)
+  // Parâmetros para customizar a lógica de pausa/retomada
   final int autoPauseDelaySeconds;
   final int maxPauseDurationMinutes;
   final int autoResumeDelayMinutes;
@@ -96,29 +96,29 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   bool _showMarkers = false;
   bool _showUserRoute = false;
 
-  bool _navigatorMode = false; // false => modo normal, true => modo navegador
-  bool _trackingMode = false; // indica se rastreamento está ativo
-  bool _isTrackingPaused = false; // indica se está pausado
-  double _distanceTraveled = 0.0; // Distância total percorrida (em KM)
-  gmaps.LatLng? _lastPosition; // Última posição registrada
-  int _elapsedSecondsNavigator = 0; // Tempo decorrido (em segundos)
+  // Estados de navegação/tracking
+  bool _navigatorMode = false; // Inicialmente, modo normal (não navegador)
+  bool _trackingMode = false; // Tracking inativo
+  bool _isTrackingPaused = false; // Não está pausado
+
+  double _distanceTraveled = 0.0; // Distância total (km)
+  gmaps.LatLng? _lastPosition; // Última posição
+  int _elapsedSecondsNavigator = 0; // Tempo decorrido (segundos)
   Timer? _timerNavigatorMode; // Timer para atualizar o tempo
 
   // Variáveis para controle de pausa automática
-  DateTime? _stoppedTimestamp; // Tempo em que foi detectado que o usuário parou
-  DateTime?
-      _pauseInitiatedTimestamp; // Tempo em que a pausa automática foi ativada
-  gmaps.LatLng?
-      _pauseStartPosition; // Posição em que a pausa automática foi iniciada
+  DateTime? _stoppedTimestamp; // Momento em que o usuário parou
+  DateTime? _pauseInitiatedTimestamp; // Momento de ativação da pausa automática
+  gmaps.LatLng? _pauseStartPosition; // Posição quando a pausa iniciou
 
   gmaps.BitmapDescriptor? _customUserIcon;
 
-  // Função para converter FlutterFlow LatLng para gmaps.LatLng
+  // Converte FlutterFlow LatLng para gmaps.LatLng
   gmaps.LatLng _convertLatLng(LatLng lfLatLng) {
     return gmaps.LatLng(lfLatLng.latitude, lfLatLng.longitude);
   }
 
-  // Função para centralizar o mapa na localização atual
+  // Centraliza o mapa na localização atual
   Future<void> _centerMapOnUserLocation() async {
     final permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied ||
@@ -126,15 +126,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       print("❌ Permissão negada.");
       return;
     }
-
     final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
     final latLng = gmaps.LatLng(position.latitude, position.longitude);
-
     setState(() {
       _currentPosition = latLng;
     });
-
     if (_mapController != null) {
       _mapController!.animateCamera(
         gmaps.CameraUpdate.newCameraPosition(
@@ -162,7 +159,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     int hours = _elapsedSecondsNavigator ~/ 3600;
     int minutes = (_elapsedSecondsNavigator % 3600) ~/ 60;
     int seconds = _elapsedSecondsNavigator % 60;
-
     if (hours > 0) {
       return "$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
     } else {
@@ -177,13 +173,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
+    // Ao iniciar, o mapa está em modo normal
     _currentPosition = _convertLatLng(widget.initialLocation);
-
     _getInitialPosition();
     _startTracking();
     _loadPolylineSavedRoute();
     _loadCustomUserIcon();
-
     _currentPosition = _convertLatLng(widget.initialLocation);
   }
 
@@ -209,7 +204,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     setState(() {
       _currentPosition = _convertLatLng(widget.initialLocation);
     });
-
     Future.delayed(const Duration(milliseconds: 500), () {
       if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
@@ -251,7 +245,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       print("❌ Permissão negada.");
       return;
     }
-
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.best,
@@ -260,7 +253,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     ).listen((Position newPosition) {
       _updateUserLocation(newPosition);
     });
-
     _updateTimer = Timer.periodic(
       Duration(seconds: widget.updateIntervalSeconds),
       (timer) async {
@@ -272,35 +264,22 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     );
   }
 
-  Future<void> _autoStopTracking() async {
-    setState(() {
-      _navigatorMode = false;
-      _trackingMode = false;
-      _isTrackingPaused = false;
-      _distanceTraveled = 0.0;
-    });
-    await updateNavigatorModeAction(false);
-    await updateTrackingModeAction(false);
-    _timerNavigatorMode?.cancel();
-  }
+  // Removida a lógica de finalização automática
+  // (O usuário agora deverá clicar manualmente em "Parar viagem")
 
   Future<void> _updateUserLocation(Position position) async {
     final newPosition = gmaps.LatLng(position.latitude, position.longitude);
-
     double speedKmH = position.speed * 3.6;
     if (speedKmH.isNaN || speedKmH < 0) speedKmH = 0.0;
     double heading = position.heading;
     if (heading.isNaN || heading < 0) heading = _currentHeading;
-
     if (_mapController != null) {
       _currentZoom = await _mapController!.getZoomLevel();
     }
-
     setState(() {
       _currentSpeed = speedKmH;
       _currentHeading = heading;
       _currentPosition = newPosition;
-
       if (!_isTrackingPaused && _lastPosition != null) {
         final distanceInMeters = Geolocator.distanceBetween(
           _lastPosition!.latitude,
@@ -310,53 +289,39 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         );
         _distanceTraveled += (distanceInMeters / 1000);
       }
-
       _userRoutePoints.add(newPosition);
       _updateUserPolyline();
       _lastPosition = newPosition;
     });
-
     final now = DateTime.now();
-
-    if (speedKmH < widget.stopSpeedThreshold) {
-      if (_stoppedTimestamp == null) {
-        _stoppedTimestamp = now;
-      }
-      if (!_isTrackingPaused &&
-          now.difference(_stoppedTimestamp!).inSeconds >=
-              widget.autoPauseDelaySeconds) {
-        setState(() {
-          _isTrackingPaused = true;
-        });
-        _pauseInitiatedTimestamp = now;
-        _pauseStartPosition = newPosition;
-        await updateNavigatorModeAction(false);
-        await updateTrackingModeAction(false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Pausa automática ativada"),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } else {
-      _stoppedTimestamp = null;
-      if (_isTrackingPaused) {
-        if (_pauseInitiatedTimestamp != null &&
-            now.difference(_pauseInitiatedTimestamp!).inMinutes >=
-                widget.maxPauseDurationMinutes) {
-          await _autoStopTracking();
+    // Executa a lógica de auto pausa/retomada somente se estiver em modo navegador
+    if (_navigatorMode) {
+      // Se o usuário estiver muito devagar, considera que ele parou
+      if (speedKmH < widget.stopSpeedThreshold) {
+        if (_stoppedTimestamp == null) {
+          _stoppedTimestamp = now;
+        }
+        if (!_isTrackingPaused &&
+            now.difference(_stoppedTimestamp!).inSeconds >=
+                widget.autoPauseDelaySeconds) {
+          setState(() {
+            _isTrackingPaused = true;
+          });
+          _pauseInitiatedTimestamp = now;
+          _pauseStartPosition = newPosition;
+          await updateNavigatorModeAction(false);
+          await updateTrackingModeAction(false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text("Viagem finalizada automaticamente"),
+              content: const Text("Pausa automática ativada"),
               duration: const Duration(seconds: 2),
             ),
           );
-          return;
         }
-        if (_pauseInitiatedTimestamp != null &&
-            now.difference(_pauseInitiatedTimestamp!).inMinutes >=
-                widget.autoResumeDelayMinutes) {
+      } else {
+        _stoppedTimestamp = null;
+        if (_isTrackingPaused) {
+          // Auto retomada: verifica se a distância movida é suficiente, sem exigir tempo de espera
           if (_pauseStartPosition != null) {
             double distance = Geolocator.distanceBetween(
               _pauseStartPosition!.latitude,
@@ -367,11 +332,25 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             if (distance >= widget.autoResumeMinDistance) {
               setState(() {
                 _isTrackingPaused = false;
+                _trackingMode = true;
               });
               _pauseInitiatedTimestamp = null;
               _pauseStartPosition = null;
               await updateNavigatorModeAction(_navigatorMode);
               await updateTrackingModeAction(_trackingMode);
+              // Atualiza a câmera para a nova posição
+              if (_mapController != null) {
+                _mapController!.animateCamera(
+                  gmaps.CameraUpdate.newCameraPosition(
+                    gmaps.CameraPosition(
+                      target: newPosition,
+                      zoom: widget.initialZoom,
+                      bearing: _currentHeading,
+                      tilt: widget.mapTilt,
+                    ),
+                  ),
+                );
+              }
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Text("Tracking retomado automaticamente"),
@@ -380,8 +359,26 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               );
             }
           }
+        } else {
+          // Se não estiver pausado e em movimento, atualiza a câmera automaticamente
+          if (_mapController != null) {
+            _mapController!.animateCamera(
+              gmaps.CameraUpdate.newCameraPosition(
+                gmaps.CameraPosition(
+                  target: newPosition,
+                  zoom: widget.initialZoom,
+                  bearing: _currentHeading,
+                  tilt: widget.mapTilt,
+                ),
+              ),
+            );
+          }
         }
       }
+    } else {
+      _stoppedTimestamp = null;
+      _pauseInitiatedTimestamp = null;
+      _pauseStartPosition = null;
     }
   }
 
@@ -401,6 +398,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
+  // Marker do usuário
   Set<gmaps.Marker> _buildMarkerUser() {
     return {
       gmaps.Marker(
@@ -418,6 +416,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     };
   }
 
+  // Marcadores extras
   Set<gmaps.Marker> _buildMarkers() {
     if (!_showMarkers) return {};
     return widget.markerLocations.map((lfLatLng) {
@@ -431,22 +430,22 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }).toSet();
   }
 
+  // Alterna entre modo navegador e tracking
   Future<void> _toggleNavigatorMode() async {
     setState(() {
       _navigatorMode = !_navigatorMode;
     });
-
     await updateNavigatorModeAction(_navigatorMode);
     await updateTrackingModeAction(_navigatorMode);
-
     if (_navigatorMode) {
-      _trackingMode = true;
-      _isTrackingPaused = false;
-      _distanceTraveled = 0.0;
-      _lastPosition = _currentPosition;
-      _elapsedSecondsNavigator = 0;
+      setState(() {
+        _trackingMode = true;
+        _isTrackingPaused = false;
+        _distanceTraveled = 0.0;
+        _lastPosition = _currentPosition;
+        _elapsedSecondsNavigator = 0;
+      });
       _startTimerNavigatorMode();
-
       if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
           gmaps.CameraUpdate.newCameraPosition(
@@ -460,8 +459,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         );
       }
     } else {
-      _trackingMode = false;
-      _isTrackingPaused = false;
+      setState(() {
+        _trackingMode = false;
+        _isTrackingPaused = false;
+      });
       _timerNavigatorMode?.cancel();
       if (_mapController != null && _currentPosition != null) {
         _mapController!.animateCamera(
@@ -479,6 +480,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     setState(() {});
   }
 
+  // Função para pausar/continuar o tracking manualmente
   void _toggleTracking() async {
     setState(() {
       if (_trackingMode && !_isTrackingPaused) {
@@ -490,7 +492,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         _isTrackingPaused = false;
       }
     });
-
     if (_isTrackingPaused) {
       await updateNavigatorModeAction(false);
       await updateTrackingModeAction(false);
@@ -500,6 +501,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
   }
 
+  // Ao clicar em "Parar viagem", desativa todos os modos
   void _stopTracking() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -520,7 +522,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         );
       },
     );
-
     if (confirm == true) {
       setState(() {
         _navigatorMode = false;
@@ -528,7 +529,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         _isTrackingPaused = false;
         _distanceTraveled = 0.0;
       });
-
       await updateNavigatorModeAction(false);
       await updateTrackingModeAction(false);
     }
@@ -539,7 +539,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     return Scaffold(
       body: Stack(
         children: [
-          // MAPA
+          // Mapa
           gmaps.GoogleMap(
             onMapCreated: (controller) {
               _mapController = controller;
@@ -564,7 +564,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             zoomControlsEnabled: false,
             tiltGesturesEnabled: true,
           ),
-
           // Botão para recentrar o mapa
           Positioned(
             bottom: 230,
@@ -597,8 +596,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               ),
             ),
           ),
-
-          // VELOCIDADE
+          // Exibição da velocidade
           if (widget.showSpeed)
             Positioned(
               top: 20,
@@ -615,8 +613,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                 ),
               ),
             ),
-
-          // ZOOM
+          // Exibição do zoom
           Positioned(
             top: 20,
             left: 20,
@@ -632,8 +629,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               ),
             ),
           ),
-
-          // DRAGGABLE SHEET
+          // Draggable Sheet
           DraggableScrollableSheet(
             controller: _sheetController,
             initialChildSize: 0.30,
@@ -750,91 +746,96 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                               ),
                               const SizedBox(height: 25),
                             ],
-                            if (_trackingMode && !_isTrackingPaused)
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                    horizontal: 60,
-                                  ),
-                                  minimumSize: const Size(300, 56),
-                                ),
-                                onPressed: () async {
-                                  setState(() {
-                                    _isTrackingPaused = true;
-                                  });
-                                  await updateTrackingModeAction(false);
-                                },
-                                child: const Text(
-                                  "Pausar",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              )
-                            else if (_trackingMode && _isTrackingPaused)
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                        horizontal: 30,
-                                      ),
-                                      minimumSize: const Size(140, 56),
-                                    ),
-                                    onPressed: () async {
-                                      setState(() {
-                                        _isTrackingPaused = false;
-                                      });
-                                      await updateTrackingModeAction(true);
-                                    },
-                                    child: const Text(
-                                      "Continuar",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                        horizontal: 30,
-                                      ),
-                                      minimumSize: const Size(140, 56),
-                                    ),
-                                    onPressed: () {
-                                      _stopTracking();
-                                    },
-                                    child: const Text(
-                                      "Parar viagem",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            else
-                              const SizedBox(),
+                            // Se estiver pausado, mostra os botões "Continuar" e "Parar viagem"
+                            _trackingMode
+                                ? (!_isTrackingPaused
+                                    ? ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.orange,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 16,
+                                            horizontal: 60,
+                                          ),
+                                          minimumSize: const Size(300, 56),
+                                        ),
+                                        onPressed: () async {
+                                          // Ao clicar "Pausar" manualmente
+                                          setState(() {
+                                            _isTrackingPaused = true;
+                                          });
+                                          await updateTrackingModeAction(false);
+                                        },
+                                        child: const Text(
+                                          "Pausar",
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16),
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.green,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 16,
+                                                horizontal: 30,
+                                              ),
+                                              minimumSize: const Size(140, 56),
+                                            ),
+                                            onPressed: () async {
+                                              setState(() {
+                                                _isTrackingPaused = false;
+                                                _trackingMode = true;
+                                              });
+                                              await updateTrackingModeAction(
+                                                  true);
+                                            },
+                                            child: const Text(
+                                              "Continuar",
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16),
+                                            ),
+                                          ),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.orange,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 16,
+                                                horizontal: 30,
+                                              ),
+                                              minimumSize: const Size(140, 56),
+                                            ),
+                                            onPressed: () {
+                                              _stopTracking();
+                                            },
+                                            child: const Text(
+                                              "Parar viagem",
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16),
+                                            ),
+                                          ),
+                                        ],
+                                      ))
+                                : const SizedBox(),
                           ],
                         ),
                       const SizedBox(height: 16),

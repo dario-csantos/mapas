@@ -154,8 +154,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                             .withoutNulls
                                             .toList()),
                                 autoPauseDelaySeconds: 5,
-                                maxPauseDurationMinutes: 6,
-                                autoResumeDelayMinutes: 5,
+                                maxPauseDurationMinutes: 2,
+                                autoResumeDelayMinutes: 1,
                                 autoResumeMinDistance: 4.0,
                                 stopSpeedThreshold: 1.0,
                               ),
