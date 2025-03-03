@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 // Begin custom widget code
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
+import 'index.dart'; // Imports other custom widgets
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '/flutter_flow/lat_lng.dart'; // Para o tipo LatLng do FlutterFlow
 import 'index.dart'; // Imports other custom widgets
@@ -55,6 +57,7 @@ class GoogleMapsLiveRoute extends StatefulWidget {
     this.autoResumeDelayMinutes = 1,
     this.autoResumeMinDistance = 5.0,
     this.stopSpeedThreshold = 1.0,
+    this.socioId = 123,
   });
 
   final double? width;
@@ -79,59 +82,60 @@ class GoogleMapsLiveRoute extends StatefulWidget {
   final int autoResumeDelayMinutes;
   final double autoResumeMinDistance;
   final double stopSpeedThreshold;
+  final int socioId;
 
   @override
   State<GoogleMapsLiveRoute> createState() => _GoogleMapsLiveRouteState();
 }
 
 class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
+  // Controlador para o DraggableScrollableSheet
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
 
   gmaps.GoogleMapController? _mapController;
-  Timer? _updateTimer;
-  Timer? _timerNavigatorMode;
-  StreamSubscription<Position>? _positionStream;
-
-  // Polylines e Markers
   Set<gmaps.Polyline> _polylines = {};
-  List<gmaps.Marker> _fetchedMarkers = []; // Marcadores (castomer=true)
-  List<gmaps.LatLng> _userRoutePoints = []; // Exibição da rota em tempo real
+  List<gmaps.LatLng> _userRoutePoints = []; // Para exibição em tempo real
+  List<_RoutePoint> _localRouteData =
+      []; // Armazenamento temporário de coordenadas/velocidades
+  StreamSubscription<Position>? _positionStream;
+  Timer? _updateTimer;
 
-  // Dados temporários da rota
-  List<_RoutePoint> _localRouteData = [];
-
-  // Estado do mapa e tracking
   gmaps.LatLng? _currentPosition;
-  gmaps.LatLng? _lastPosition;
+
   double _currentSpeed = 0.0;
   double _currentHeading = 0.0;
   double _currentZoom = 16.0;
-  double _distanceTraveled = 0.0;
 
   bool _showTraffic = false;
   bool _showSavedRoute = false;
   bool _showMarkers = false;
   bool _showUserRoute = false;
 
-  bool _navigatorMode = false;
-  bool _trackingMode = false;
+  bool _navigatorMode = false; // Modo navegador
+  bool _trackingMode = false; // Tracking ativo
   bool _isTrackingPaused = false;
 
-  // Lógica de pausa
+  double _distanceTraveled = 0.0; // Em km
+  gmaps.LatLng? _lastPosition;
+
   DateTime? _stoppedTimestamp;
   DateTime? _pauseInitiatedTimestamp;
   gmaps.LatLng? _pauseStartPosition;
 
-  // Para cálculo de duração (subtraindo pausas)
-  DateTime? _startTime;
-  Duration _accumulatedPause = Duration.zero;
-  DateTime? _pauseStartTime;
+  // Flag para indicar se o popup está aberto (bloqueia auto-resume)
 
-  // Bloqueia auto-resume quando popup estiver aberto
   bool _popupOpen = false;
 
   gmaps.BitmapDescriptor? _customUserIcon;
+
+  // Variável para armazenar os markers buscados do Supabase
+  List<gmaps.Marker> _fetchedMarkers = [];
+
+  // AQUI: para exibir o tempo em tempo real no DraggableSheet
+  DateTime? _startTime; // Quando começou efetivamente a viagem
+  Duration _accumulatedPause = Duration.zero; // Soma do tempo de pausas
+  DateTime? _pauseStartTime; // Quando iniciou uma pausa
 
   @override
   void initState() {
@@ -149,18 +153,16 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   void dispose() {
     _positionStream?.cancel();
     _updateTimer?.cancel();
-    _timerNavigatorMode?.cancel();
+
     super.dispose();
   }
 
-  // Converte FlutterFlow LatLng para gmaps.LatLng
+  // Converte FlutterFlow LatLng para Google Maps LatLng
   gmaps.LatLng _convertLatLng(LatLng lfLatLng) {
     return gmaps.LatLng(lfLatLng.latitude, lfLatLng.longitude);
   }
 
-  // ─────────────────────────────────────────
-  // CENTRALIZAR NO USUÁRIO
-  // ─────────────────────────────────────────
+  // Centraliza o mapa na localização atual
 
   Future<void> _centerMapOnUserLocation() async {
     final permission = await Geolocator.checkPermission();
@@ -171,6 +173,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
     final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
+
     final latLng = gmaps.LatLng(position.latitude, position.longitude);
     setState(() {
       _currentPosition = latLng;
@@ -184,9 +187,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
   }
 
-  // ─────────────────────────────────────────
-  // ÍCONE DO USUÁRIO
-  // ─────────────────────────────────────────
+  // Carrega o ícone personalizado
 
   Future<void> _loadCustomUserIcon() async {
     final icon = await gmaps.BitmapDescriptor.fromAssetImage(
@@ -198,9 +199,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  // ─────────────────────────────────────────
-  // POSIÇÃO INICIAL
-  // ─────────────────────────────────────────
+  // Obtém a posição inicial
 
   Future<void> _getInitialPosition() async {
     setState(() {
@@ -221,17 +220,18 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  // ─────────────────────────────────────────
-  // FUNÇÕES PARA ROTA SALVA (driver=true)
-  // ─────────────────────────────────────────
+  // ───────────────────────────────────────────────
+  // FUNÇÕES DE SELECT PARA ROTAS E MARKERS DO SUPABASE
+  // ───────────────────────────────────────────────
 
+  // Busca as rotas salvas (registros com driver = true)
   Future<List<gmaps.LatLng>> _fetchSavedRoute() async {
     try {
       final response = await Supabase.instance.client
           .from('trakingDriver')
           .select('location')
           .eq('driver', true)
-          .order('created_at', ascending: true);
+          .order('timestamp', ascending: false); // timestamp
       final data = response as List<dynamic>;
       List<gmaps.LatLng> routePoints = [];
       for (var row in data) {
@@ -248,7 +248,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
   }
 
-  // Carrega e exibe a rota salva (polylines) e dá zoom
+  // Atualiza a polyline dos pontos salvos via select do Supabase
   Future<void> _loadPolylineSavedRoute() async {
     final savedPoints = await _fetchSavedRoute();
     setState(() {
@@ -264,7 +264,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         );
       }
     });
-    // Zoom automático para enquadrar a rota salva
+// Zoom automático para enquadrar a rota salva
     if (_showSavedRoute && savedPoints.isNotEmpty) {
       Future.delayed(const Duration(milliseconds: 300), () {
         _zoomToFitRoute(savedPoints);
@@ -299,9 +299,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
   }
 
-  // ─────────────────────────────────────────
-  // FUNÇÕES PARA MARKERS (castomer=true)
-  // ─────────────────────────────────────────
+  // Busca os markers (registros com castomer = true)
 
   Future<List<gmaps.Marker>> _fetchMarkersFromSupabase() async {
     try {
@@ -333,6 +331,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
   }
 
+  // Carrega os markers do Supabase e atualiza a variável _fetchedMarkers
   Future<void> _loadMarkersFromSupabase() async {
     final markers = await _fetchMarkersFromSupabase();
     setState(() {
@@ -340,7 +339,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  // Converte string "LatLng(lat: X, lng: Y)" em gmaps.LatLng
+  // Converte a string "LatLng(lat: X, lng: Y)" para um objeto gmaps.LatLng
   gmaps.LatLng? _parseLocationString(String location) {
     final regex = RegExp(r"LatLng\(lat:\s*([-\d\.]+),\s*lng:\s*([-\d\.]+)\)");
     final match = regex.firstMatch(location);
@@ -354,10 +353,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     return null;
   }
 
-  // ─────────────────────────────────────────
-  // TRACKING DA POSIÇÃO
-  // ─────────────────────────────────────────
+  // ───────────────────────────────────────────────
+  // TRACKING
+  // ───────────────────────────────────────────────
 
+  // Inicia o tracking da posição
   Future<void> _startTracking() async {
     final permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied ||
@@ -376,16 +376,16 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       (timer) async {
         final newPosition = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.best);
+
         _updateUserLocation(newPosition);
       },
     );
   }
 
-  // Atualiza posição, calcula distância e armazena localmente (com speed km/h)
+  // Atualiza a posição do usuário, aplica a lógica de pausa/retomada e armazena os dados localmente
   Future<void> _updateUserLocation(Position position) async {
     final newPosition = gmaps.LatLng(position.latitude, position.longitude);
 
-    // Converte para km/h
     double speedKmH = position.speed * 3.6;
     if (speedKmH.isNaN || speedKmH < 0) speedKmH = 0.0;
 
@@ -401,6 +401,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _currentHeading = heading;
       _currentPosition = newPosition;
 
+      // Se não estiver pausado, atualiza a distância
       if (!_isTrackingPaused && _lastPosition != null) {
         final distanceInMeters = Geolocator.distanceBetween(
           _lastPosition!.latitude,
@@ -411,7 +412,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         _distanceTraveled += (distanceInMeters / 1000);
       }
 
-      // Exibição em tempo real
+      // Exibição "em tempo real"
       _userRoutePoints.add(newPosition);
       _updateUserPolyline();
       _lastPosition = newPosition;
@@ -419,7 +420,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
 
     final now = DateTime.now();
 
-    // Lógica de auto-pausa/retomada se no modo navegador e popup não estiver aberto
+    // Lógica de auto pausa/retomada se estiver no modo navegador
+    // Se o popup estiver aberto, desativa a auto retomada
     if (!_popupOpen && _navigatorMode) {
       if (speedKmH < widget.stopSpeedThreshold) {
         if (_stoppedTimestamp == null) {
@@ -445,7 +447,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               duration: const Duration(seconds: 2),
             ),
           );
-          _pauseStartTime ??= now;
+          // Ajusta contadores de pausa
+          if (_pauseStartTime == null) {
+            _pauseStartTime = now;
+          }
         }
       } else {
         _stoppedTimestamp = null;
@@ -461,16 +466,18 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               _isTrackingPaused = false;
               _trackingMode = true;
             });
+            _pauseInitiatedTimestamp = null;
+            _pauseStartPosition = null;
+            await updateNavigatorModeAction(_navigatorMode);
+            await updateTrackingModeAction(_trackingMode);
+            // Se estava pausado, computa quanto tempo ficou em pausa
             if (_pauseStartTime != null) {
               final pausedDuration =
                   DateTime.now().difference(_pauseStartTime!);
               _accumulatedPause += pausedDuration;
               _pauseStartTime = null;
             }
-            _pauseInitiatedTimestamp = null;
-            _pauseStartPosition = null;
-            await updateNavigatorModeAction(_navigatorMode);
-            await updateTrackingModeAction(_trackingMode);
+
             if (_mapController != null) {
               _mapController!.animateCamera(
                 gmaps.CameraUpdate.newCameraPosition(
@@ -495,7 +502,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             );
           }
         } else {
-          // Se não pausado, atualiza câmera
+          // Se estiver em movimento e não pausado
           if (_mapController != null) {
             _mapController!.animateCamera(
               gmaps.CameraUpdate.newCameraPosition(
@@ -516,21 +523,128 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _pauseStartPosition = null;
     }
 
-    // Armazena localmente se tracking ativo e não pausado
+    // Armazena o ponto e a velocidade + timestamp localmente se o tracking estiver ativo e não pausado
     if (_trackingMode && !_isTrackingPaused) {
-      _startTime ??= now;
+      // Se a viagem acabou de iniciar, registra o startTime
+      if (_startTime == null) {
+        _startTime = now;
+      }
       _localRouteData.add(_RoutePoint(newPosition, speedKmH, now));
     }
   }
 
-  // ─────────────────────────────────────────
-  // ATUALIZA POLYLINE DO USUÁRIO
-  // ─────────────────────────────────────────
+  // ───────────────────────────────────────────────
+  // EXIBIÇÃO EM TEMPO REAL DO TEMPO
+  // ───────────────────────────────────────────────
 
+  // Calcula em tempo real o tempo decorrido subtraindo as pausas
+  Duration _getLiveElapsedTime() {
+    if (_startTime == null) return Duration.zero;
+    final now = DateTime.now();
+    final baseDuration = now.difference(_startTime!);
+    return baseDuration - _accumulatedPause;
+  }
+
+  String _formatLiveElapsedTime() {
+    final duration = _getLiveElapsedTime();
+    final hours = duration.inHours;
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    if (hours > 0) {
+      return "$hours:$minutes:$seconds";
+    } else {
+      return "$minutes:$seconds";
+    }
+  }
+
+  // ───────────────────────────────────────────────
+  // SALVAR DADOS NO SUPABASE
+  // ───────────────────────────────────────────────
+
+  // Salva todos os pontos armazenados localmente no Supabase (com kmh e timestamp)
+  Future<void> _saveAllLocalDataToSupabase() async {
+    try {
+      final driverValue = true;
+      final costumerValue = false;
+      final statusValue = true;
+      final userRefValue = '10000000-0000-0000-0000-000000000000';
+      //final socioIdValue = widget.socio_id;
+
+      final rowsToInsert = _localRouteData.map((point) {
+        final lat = point.position.latitude;
+        final lng = point.position.longitude;
+        final locationString = "LatLng(lat: $lat, lng: $lng)";
+        return {
+          'location': locationString,
+          'driver': driverValue,
+          'castomer': costumerValue,
+          'status': statusValue,
+          'userRef': userRefValue,
+          'socio_id': widget.socioId,
+          'kmh': point.speed, // Armazena a velocidade em km/h
+          'timestamp': point.timestamp.toIso8601String(),
+        };
+      }).toList();
+
+      if (rowsToInsert.isNotEmpty) {
+        await Supabase.instance.client
+            .from('trakingDriver')
+            .insert(rowsToInsert)
+            .select();
+        print('Rota salva com ${rowsToInsert.length} pontos.');
+      } else {
+        print('Nenhum ponto para salvar.');
+      }
+      _localRouteData.clear();
+    } catch (e) {
+      print('Erro ao salvar dados locais no Supabase: $e');
+    }
+  }
+
+  // ───────────────────────────────────────────────
+  // CÁLCULOS DE ESTATÍSTICAS FINAIS
+  // ───────────────────────────────────────────────
+
+  // Calcula a velocidade média final como a média dos valores de velocidade registrados
+  double _calculateAverageSpeed() {
+    if (_localRouteData.isEmpty) return 0.0;
+    double totalSpeed = 0.0;
+    for (var point in _localRouteData) {
+      totalSpeed += point.speed;
+    }
+    return totalSpeed / _localRouteData.length;
+  }
+
+  // Duração total: diferença entre o primeiro e o último timestamp
+  Duration _calculateTotalDuration() {
+    if (_localRouteData.length < 2) return Duration.zero;
+    _localRouteData.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    final start = _localRouteData.first.timestamp;
+    final end = _localRouteData.last.timestamp;
+    return end.difference(start);
+  }
+
+  // Formata a duração (ex: 0:05:32)
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    if (hours > 0) {
+      return "$hours:$minutes:$seconds";
+    } else {
+      return "$minutes:$seconds";
+    }
+  }
+
+  // ───────────────────────────────────────────────
+  // ATUALIZAÇÃO DE POLYLINE E MARKERS
+  // ───────────────────────────────────────────────
+
+  // Atualiza a polyline do usuário (rota em tempo real)
   void _updateUserPolyline() {
     setState(() {
       _polylines.removeWhere((poly) => poly.polylineId.value == "user_route");
-      if (widget.showUserRoute) {
+      if (_showUserRoute) {
         _polylines.add(
           gmaps.Polyline(
             polylineId: const gmaps.PolylineId("user_route"),
@@ -543,18 +657,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
   }
 
-  // ─────────────────────────────────────────
-  // MARKERS
-  // ─────────────────────────────────────────
-
-  Set<gmaps.Marker> _buildMarkers() {
-    if (!_showMarkers) return {};
-    return _fetchedMarkers.toSet();
-  }
-
-  // ─────────────────────────────────────────
-  // MARKER DO USUÁRIO
-  // ─────────────────────────────────────────
+  // Constrói o marker do usuário
 
   Set<gmaps.Marker> _buildMarkerUser() {
     return {
@@ -570,10 +673,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     };
   }
 
-  // ─────────────────────────────────────────
-  // FUNÇÕES DE CONTROLE MODO NAVEGADOR E TRACKING
-  // ─────────────────────────────────────────
+  // Constrói os markers extras usando os markers buscados do Supabase
+  Set<gmaps.Marker> _buildMarkers() {
+    if (!_showMarkers) return {};
+    return _fetchedMarkers.toSet();
+  }
 
+  // ───────────────────────────────────────────────
+  // MODO NAVEGADOR E FUNÇÕES DE CONTROLE
+  // ───────────────────────────────────────────────
+
+  // Alterna entre modo navegador e tracking
   Future<void> _toggleNavigatorMode() async {
     setState(() {
       _navigatorMode = !_navigatorMode;
@@ -587,6 +697,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         _isTrackingPaused = false;
         _distanceTraveled = 0.0;
         _lastPosition = _currentPosition;
+        // Zera cronômetro
         _startTime = null;
         _accumulatedPause = Duration.zero;
         _pauseStartTime = null;
@@ -626,12 +737,15 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     setState(() {});
   }
 
+  // Função para pausar/continuar o tracking manualmente
   void _toggleTracking() async {
     setState(() {
       if (_trackingMode && !_isTrackingPaused) {
+        // Iniciando pausa manual
         _isTrackingPaused = true;
         _pauseStartTime = DateTime.now();
       } else if (_trackingMode && _isTrackingPaused) {
+        // Retomando
         _isTrackingPaused = false;
         if (_pauseStartTime != null) {
           final pausedDuration = DateTime.now().difference(_pauseStartTime!);
@@ -639,7 +753,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           _pauseStartTime = null;
         }
       } else {
-        // Iniciar tracking
+        // Inicia o tracking
         _trackingMode = true;
         _isTrackingPaused = false;
         _startTime = null;
@@ -659,110 +773,19 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
   }
 
-  // Timer do modo navegação (caso queira exibir tempo decorrido por segundo)
-  void _startTimerNavigatorMode() {
-    _timerNavigatorMode?.cancel();
-    _timerNavigatorMode = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_trackingMode && !_isTrackingPaused) {
-        setState(() {
-          // Se quiser atualizar algo a cada segundo...
-        });
-      }
-    });
-  }
+  // "Parar viagem": exibe o popup de pré-visualização da rota com estatísticas e impede auto-resume
 
-  // ─────────────────────────────────────────
-  // PARAR VIAGEM + POPUP DE PRÉ-VISUALIZAÇÃO
-  // ─────────────────────────────────────────
-
-  void _stopTrackingPopup() {
+  void _stopTrackingPopup() async {
     setState(() {
       _popupOpen = true;
     });
     _showRoutePreviewPopup();
   }
 
-  // Salva todos os pontos no Supabase (com kmh)
-  Future<void> _saveAllLocalDataToSupabase() async {
-    try {
-      final driverValue = true;
-      final costumerValue = false;
-      final statusValue = true;
-      final userRefValue = '10000000-0000-0000-0000-000000000000';
-      final socioIdValue = 1234;
+  // Exibe o popup com o mapa de pré-visualização e estatísticas
 
-      final rowsToInsert = _localRouteData.map((point) {
-        final lat = point.position.latitude;
-        final lng = point.position.longitude;
-        final locationString = "LatLng(lat: $lat, lng: $lng)";
-        return {
-          'location': locationString,
-          'driver': driverValue,
-          'castomer': costumerValue,
-          'status': statusValue,
-          'userRef': userRefValue,
-          'socio_id': socioIdValue,
-          'kmh': point.speed, // Armazena a velocidade em km/h
-        };
-      }).toList();
-
-      if (rowsToInsert.isNotEmpty) {
-        await Supabase.instance.client
-            .from('trakingDriver')
-            .insert(rowsToInsert)
-            .select();
-        print('Rota salva com ${rowsToInsert.length} pontos.');
-      } else {
-        print('Nenhum ponto para salvar.');
-      }
-      _localRouteData.clear();
-    } catch (e) {
-      print('Erro ao salvar dados locais no Supabase: $e');
-    }
-  }
-
-  // Calcula a velocidade média a partir dos pontos (somente speeds)
-  double _calculateAverageSpeed() {
-    if (_localRouteData.isEmpty) return 0.0;
-    double totalSpeed = 0.0;
-    for (var p in _localRouteData) {
-      totalSpeed += p.speed;
-    }
-    return totalSpeed / _localRouteData.length;
-  }
-
-  // Duração total do primeiro ao último ponto (subtraindo pausas)
-  Duration _calculateTotalDuration() {
-    if (_localRouteData.isEmpty) return Duration.zero;
-    // Ordena para pegar o timestamp inicial e final
-    _localRouteData.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    final start = _localRouteData.first.timestamp;
-    final end = _localRouteData.last.timestamp;
-    final total = end.difference(start);
-    return total - _accumulatedPause;
-  }
-
-  // Formata a duração
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    if (hours > 0) {
-      return "$hours:$minutes:$seconds";
-    } else {
-      return "$minutes:$seconds";
-    }
-  }
-
-  // Retorna a duração total formatada
-  String _formatLiveElapsedTime() {
-    final duration = _calculateTotalDuration();
-    return _formatDuration(duration);
-  }
-
-  // Exibe popup de pré-visualização com estatísticas e mapa
   void _showRoutePreviewPopup() {
-    final totalDuration = _calculateTotalDuration();
+    final totalDuration = _calculateTotalDuration(); // do 1º ao último ponto
     final avgSpeed = _calculateAverageSpeed();
 
     showDialog(
@@ -784,6 +807,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
+                      // Distância total
                       Column(
                         children: [
                           Text(
@@ -796,6 +820,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                   TextStyle(color: Colors.white, fontSize: 14)),
                         ],
                       ),
+                      // Velocidade média
                       Column(
                         children: [
                           Text(
@@ -808,6 +833,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                   TextStyle(color: Colors.white, fontSize: 14)),
                         ],
                       ),
+                      // Duração calculada a partir dos timestamps
                       Column(
                         children: [
                           Text(
@@ -823,6 +849,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                     ],
                   ),
                 ),
+                // Botões
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -931,10 +958,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     final cameraUpdate = gmaps.CameraUpdate.newLatLngBounds(bounds, 50);
     controller.animateCamera(cameraUpdate);
   }
-
-  // ─────────────────────────────────────────
-  // BUILD PRINCIPAL
-  // ─────────────────────────────────────────
+  // ───────────────────────────────────────────────
+  // EXIBIÇÃO
+  // ───────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -995,8 +1021,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(10)),
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: Text("${_currentSpeed.toStringAsFixed(1)} km/h",
                     style: const TextStyle(color: Colors.white, fontSize: 18)),
               ),
@@ -1009,8 +1036,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(8)),
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Text("Zoom: ${_currentZoom.toStringAsFixed(2)}",
                   style: const TextStyle(color: Colors.white, fontSize: 16)),
             ),
@@ -1032,7 +1060,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                     BoxShadow(
                         color: Colors.black26,
                         blurRadius: 10,
-                        offset: const Offset(0, -4))
+                        offset: const Offset(0, -4)),
                   ],
                 ),
                 child: SingleChildScrollView(
@@ -1048,6 +1076,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                             borderRadius: BorderRadius.circular(8)),
                       ),
                       const SizedBox(height: 8),
+
+                      // Se não está no modo navegador, mostra o botão "Navegar"
                       if (!_navigatorMode)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1078,38 +1108,42 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceEvenly,
                                 children: [
+                                  // Distância
                                   Column(
                                     children: [
                                       Text(
-                                          "${_distanceTraveled.toStringAsFixed(1)}",
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 25)),
+                                        "${_distanceTraveled.toStringAsFixed(1)}",
+                                        style: const TextStyle(
+                                            color: Colors.white, fontSize: 25),
+                                      ),
                                       const Text("km",
                                           style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 14)),
                                     ],
                                   ),
+                                  // Velocidade instantânea
                                   Column(
                                     children: [
                                       Text(
-                                          "${_currentSpeed.toStringAsFixed(1)} km/h",
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 25)),
+                                        "${_currentSpeed.toStringAsFixed(1)} km/h",
+                                        style: const TextStyle(
+                                            color: Colors.white, fontSize: 25),
+                                      ),
                                       const Text("km/h",
                                           style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 14)),
                                     ],
                                   ),
+                                  // Tempo em tempo real (subtraindo pausas)
                                   Column(
                                     children: [
-                                      Text(_formatLiveElapsedTime(),
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 25)),
+                                      Text(
+                                        _formatLiveElapsedTime(),
+                                        style: const TextStyle(
+                                            color: Colors.white, fontSize: 25),
+                                      ),
                                       const Text("tempo",
                                           style: TextStyle(
                                               color: Colors.white,
@@ -1139,7 +1173,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                               _currentPosition;
                                           _pauseInitiatedTimestamp =
                                               DateTime.now();
-                                          _pauseStartTime ??= DateTime.now();
+                                          // Marca o início da pausa
+                                          if (_pauseStartTime == null) {
+                                            _pauseStartTime = DateTime.now();
+                                          }
                                         });
                                         await updateTrackingModeAction(false);
                                       },
@@ -1170,8 +1207,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                                 final pausedDuration =
                                                     DateTime.now().difference(
                                                         _pauseStartTime!);
+
                                                 _accumulatedPause +=
                                                     pausedDuration;
+
                                                 _pauseStartTime = null;
                                               }
                                             });
@@ -1205,7 +1244,10 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                     ),
                           ],
                         ),
+
                       const SizedBox(height: 16),
+
+                      // Botões de rota salva, markers, etc.
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [

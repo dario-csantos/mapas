@@ -4,6 +4,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
@@ -21,15 +22,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
   late HomePageModel _model;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
-  LatLng? currentUserLocationValue;
 
   @override
   void initState() {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
-    getCurrentUserLocation(defaultLocation: LatLng(0.0, 0.0), cached: true)
-        .then((loc) => safeSetState(() => currentUserLocationValue = loc));
     WidgetsBinding.instance.addPostFrameCallback((_) => safeSetState(() {}));
   }
 
@@ -42,22 +40,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (currentUserLocationValue == null) {
-      return Container(
-        color: FlutterFlowTheme.of(context).primaryBackground,
-        child: Center(
-          child: SizedBox(
-            width: 50.0,
-            height: 50.0,
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                FlutterFlowTheme.of(context).primary,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    context.watch<FFAppState>();
 
     return FutureBuilder<List<ViewLocationsRow>>(
       future: ViewLocationsTable().queryRows(
@@ -134,7 +117,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 initialZoom: 16.99,
                                 mapTilt: 60.0,
                                 showUserRoute: true,
-                                initialLocation: currentUserLocationValue!,
+                                initialLocation: FFAppState().CoordCasa!,
                                 markerLocations: functions.converteStringLatLng(
                                     homePageViewLocationsRowList
                                         .where((e) => e.customers == true)
@@ -158,6 +141,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 autoResumeDelayMinutes: 1,
                                 autoResumeMinDistance: 1.0,
                                 stopSpeedThreshold: 1.0,
+                                socioId: 2248,
                               ),
                             ),
                           ),
