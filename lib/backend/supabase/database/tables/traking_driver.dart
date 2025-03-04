@@ -38,4 +38,10 @@ class TrakingDriverRow extends SupabaseDataRow {
 
   int? get socioId => getField<int>('socio_id');
   set socioId(int? value) => setField<int>('socio_id', value);
+
+  double? get kmh => getField<double>('kmh');
+  set kmh(double? value) => setField<double>('kmh', value);
+
+  DateTime? get timestamp => getField<DateTime>('timestamp');
+  set timestamp(DateTime? value) => setField<DateTime>('timestamp', value);
 }

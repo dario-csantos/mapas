@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:from_css_color/from_css_color.dart';
 
 import '/backend/supabase/supabase.dart';
-
+import '/backend/sqlite/queries/sqlite_row.dart';
 import '../../flutter_flow/place.dart';
 import '../../flutter_flow/uploaded_file.dart';
 
@@ -73,6 +73,9 @@ String? serializeParam(
 
       case ParamType.SupabaseRow:
         return json.encode((param as SupabaseDataRow).data);
+
+      case ParamType.SqliteRow:
+        return json.encode((param as SqliteRow).data);
 
       default:
         data = null;
@@ -151,6 +154,7 @@ enum ParamType {
   JSON,
 
   SupabaseRow,
+  SqliteRow,
 }
 
 dynamic deserializeParam<T>(
@@ -205,6 +209,8 @@ dynamic deserializeParam<T>(
       case ParamType.SupabaseRow:
         final data = json.decode(param) as Map<String, dynamic>;
         switch (T) {
+          case RoutesRow:
+            return RoutesRow(data);
           case ViewFullPostsRow:
             return ViewFullPostsRow(data);
           case ViewTotalLike1Row:
@@ -225,6 +231,8 @@ dynamic deserializeParam<T>(
             return ViewPostsComImagensRow(data);
           case PostComentariosRow:
             return PostComentariosRow(data);
+          case PlacesRow:
+            return PlacesRow(data);
           case TrakingDriverRow:
             return TrakingDriverRow(data);
           case ApriscosRow:
@@ -237,6 +245,8 @@ dynamic deserializeParam<T>(
             return SociosRow(data);
           case UnidadeGestaoRow:
             return UnidadeGestaoRow(data);
+          case RoutePointsRow:
+            return RoutePointsRow(data);
           case LikesRow:
             return LikesRow(data);
           case ViewLocationsRow:
@@ -247,6 +257,13 @@ dynamic deserializeParam<T>(
             return ViewSocios1Row(data);
           case ViewTrajetoRow:
             return ViewTrajetoRow(data);
+          default:
+            return null;
+        }
+
+      case ParamType.SqliteRow:
+        final data = json.decode(param) as Map<String, dynamic>;
+        switch (T) {
           default:
             return null;
         }

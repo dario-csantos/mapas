@@ -9,6 +9,7 @@ import 'lat_lng.dart';
 import 'place.dart';
 import 'uploaded_file.dart';
 import '/backend/supabase/supabase.dart';
+import '/backend/sqlite/sqlite_manager.dart';
 
 List<LatLng> converteStringLatLng(List<String> strings) {
   List<LatLng> latLngList = [];
