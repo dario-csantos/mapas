@@ -12,13 +12,9 @@ import 'package:flutter/material.dart';
 
 import 'index.dart'; // Imports other custom widgets
 
+// Outras importações necessárias
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '/flutter_flow/lat_lng.dart'; // Para o tipo LatLng do FlutterFlow
-import 'index.dart'; // Imports other custom widgets
-
-import 'index.dart'; // Imports other custom widgets
-import '/flutter_flow/lat_lng.dart';
-import '/custom_code/actions/update_navigator_mode_action.dart'; // Custom Action
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -122,9 +118,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   Duration _accumulatedPause = Duration.zero;
   DateTime? _pauseStartTime;
 
+  // Controllers para os campos de texto
   late TextEditingController _nameController;
   late TextEditingController _regionController;
   late TextEditingController _descriptionController;
+  late TextEditingController _photoController; // novo controller para foto
 
   // Guarda o ID da rota criada no SQLite
   int? _currentRouteId;
@@ -151,6 +149,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _nameController = TextEditingController();
     _regionController = TextEditingController();
     _descriptionController = TextEditingController();
+    _photoController = TextEditingController();
     WakelockPlus.enable();
     _currentPosition = _convertLatLng(widget.initialLocation);
     _getInitialPosition();
@@ -167,6 +166,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _nameController.dispose();
     _regionController.dispose();
     _descriptionController.dispose();
+    _photoController.dispose();
     super.dispose();
   }
 
@@ -296,7 +296,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
   }
 
-  // Se quiser markers
   Future<void> _loadMarkersFromSupabase() async {
     final markers = await _fetchMarkersFromSupabase();
     setState(() {
@@ -386,7 +385,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
     final now = DateTime.now();
 
-    // Lógica de auto pausa/retomada
+    // Lógica de auto pausa/retomada (simplificada aqui)
     if (!_popupOpen && _navigatorMode) {
       if (speedKmH < widget.stopSpeedThreshold) {
         if (_stoppedTimestamp == null) {
@@ -490,6 +489,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           'name': _nameController.text,
           'region': _regionController.text,
           'description': _descriptionController.text,
+          //'photo': _photoController.text,
           'created_at': now.toIso8601String(),
           'avg_speed': 0.0,
           'total_duration': 0,
@@ -544,6 +544,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       final routeData = {
         'socio_id': localRoute['socio_id'],
         'name': localRoute['name'],
+        'region': localRoute['region'],
         'description': localRoute['description'],
         'created_at': localRoute['created_at'],
         'avg_speed': localRoute['avg_speed'],
@@ -574,9 +575,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       } else {
         print('Nenhum ponto para salvar.');
       }
-      // Limpeza local, se quiser
-      // await db.delete('route_points', where: 'route_id = ?', whereArgs: [_currentRouteId]);
-      // await db.delete('routes', where: 'route_id = ?', whereArgs: [_currentRouteId]);
       _localRouteData.clear();
       _currentRouteId = null;
     } catch (e) {
@@ -601,13 +599,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     final start = _localRouteData.first.timestamp;
     final end = _localRouteData.last.timestamp;
     return end.difference(start);
-  }
-
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    return hours > 0 ? "$hours:$minutes:$seconds" : "$minutes:$seconds";
   }
 
   // ───────────────────────────────────────────────
@@ -746,16 +737,13 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       builder: (ctx) {
         return Dialog(
           alignment: Alignment.topCenter,
-          insetPadding:
-              EdgeInsets.zero, // Removendo padding para usar toda a tela
+          insetPadding: EdgeInsets.zero,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Container(
             width: double.infinity,
-            height: MediaQuery.of(context)
-                .size
-                .height, // Usa a altura total do dispositivo
-            color: Colors.black87, // Fundo escuro
+            height: MediaQuery.of(context).size.height,
+            color: Colors.black87,
             child: Column(
               children: [
                 // Topo com título e botão "SALVE"
@@ -771,63 +759,25 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                       ),
                       GestureDetector(
                         onTap: () async {
-                          // Ação de salvar ao tocar no "SALVE"
-                          final totalDuration = _calculateTotalDuration();
-                          final avgSpeed = _calculateAverageSpeed();
-                          final distance = _distanceTraveled;
-                          if (_currentRouteId != null) {
-                            final db = SQLiteManager.instance.database;
-                            await db.update(
-                              'routes',
-                              {
-                                'name': _nameController.text,
-                                'region': _regionController.text,
-                                'description': _descriptionController.text,
-                                'avg_speed': avgSpeed,
-                                'total_duration': totalDuration.inSeconds,
-                                'total_distance': distance,
-                              },
-                              where: 'route_id = ?',
-                              whereArgs: [_currentRouteId],
-                            );
-                          }
-
-                          await _saveAllLocalDataToSupabase();
-                          _descriptionController.clear();
-                          setState(() {
-                            _navigatorMode = false;
-                            _trackingMode = false;
-                            _isTrackingPaused = false;
-                            _distanceTraveled = 0.0;
-                            _userRoutePoints.clear();
-                            _localRouteData.clear();
-                            _popupOpen = false;
-                            _startTime = null;
-                            _accumulatedPause = Duration.zero;
-                            _pauseStartTime = null;
-                          });
-                          await updateNavigatorModeAction(false);
-                          await updateTrackingModeAction(false);
-                          Navigator.pop(ctx);
+                          await _saveRoute();
                         },
                         child: const Text(
                           "SALVE",
                           style: TextStyle(
-                              color: Colors.orange,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold),
+                            color: Colors.orange,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 // Preview do mapa
                 SizedBox(
                   height: 180,
                   child: _buildPreviewMap(_userRoutePoints),
                 ),
-
                 // Linha de métricas
                 Padding(
                   padding:
@@ -846,9 +796,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                     ],
                   ),
                 ),
-
-                // Campos de texto (Nome, Descrição, etc.)
-// Campos de texto (Nome, Região, Descrição, etc.)
+                // Campos de texto (Nome, Região, Descrição, Foto)
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -860,13 +808,11 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                         const SizedBox(height: 8),
                         _buildTextField("Descrição", _descriptionController),
                         const SizedBox(height: 8),
-                        _buildTextField("Foto (opcional)",
-                            _descriptionController), // Se precisar, pode usar outro controlador
+                        _buildTextField("Foto (opcional)", _photoController),
                       ],
                     ),
                   ),
                 ),
-
                 // Linha de botões: Salvar rota e Não Salvar
                 Padding(
                   padding:
@@ -880,40 +826,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                             minimumSize: const Size(double.infinity, 48),
                           ),
                           onPressed: () async {
-                            final totalDuration = _calculateTotalDuration();
-                            final avgSpeed = _calculateAverageSpeed();
-                            final distance = _distanceTraveled;
-                            if (_currentRouteId != null) {
-                              final db = SQLiteManager.instance.database;
-                              await db.update(
-                                'routes',
-                                {
-                                  'avg_speed': avgSpeed,
-                                  'total_duration': totalDuration.inSeconds,
-                                  'total_distance': distance,
-                                  'description': _descriptionController.text,
-                                },
-                                where: 'route_id = ?',
-                                whereArgs: [_currentRouteId],
-                              );
-                            }
-                            await _saveAllLocalDataToSupabase();
-                            _descriptionController.clear();
-                            setState(() {
-                              _navigatorMode = false;
-                              _trackingMode = false;
-                              _isTrackingPaused = false;
-                              _distanceTraveled = 0.0;
-                              _userRoutePoints.clear();
-                              _localRouteData.clear();
-                              _popupOpen = false;
-                              _startTime = null;
-                              _accumulatedPause = Duration.zero;
-                              _pauseStartTime = null;
-                            });
-                            await updateNavigatorModeAction(false);
-                            await updateTrackingModeAction(false);
-                            Navigator.pop(ctx);
+                            await _saveRoute();
                           },
                           child: const Text("Salvar rota",
                               style: TextStyle(fontSize: 16)),
@@ -927,7 +840,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                             minimumSize: const Size(double.infinity, 48),
                           ),
                           onPressed: () {
-                            // Reseta o estado sem salvar a rota
                             setState(() {
                               _navigatorMode = false;
                               _trackingMode = false;
@@ -960,7 +872,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     );
   }
 
-  /// Exemplo de widget para cada métrica (km, tempo, etc.)
   Widget _buildMetricItem(String value, IconData icon) {
     return Column(
       children: [
@@ -971,7 +882,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     );
   }
 
-  /// Exemplo de widget para um TextField "genérico"
   Widget _buildTextField(String label, TextEditingController controller) {
     return TextField(
       controller: controller,
@@ -1030,6 +940,52 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     );
     final cameraUpdate = gmaps.CameraUpdate.newLatLngBounds(bounds, 50);
     controller.animateCamera(cameraUpdate);
+  }
+
+  // ───────────────────────────────────────────────
+  // FUNÇÃO UNIFICADA DE SALVAMENTO DA ROTA
+  Future<void> _saveRoute() async {
+    final totalDuration = _calculateTotalDuration();
+    final avgSpeed = _calculateAverageSpeed();
+    final distance = _distanceTraveled;
+    if (_currentRouteId != null) {
+      final db = SQLiteManager.instance.database;
+      await db.update(
+        'routes',
+        {
+          'name': _nameController.text,
+          'region': _regionController.text,
+          'description': _descriptionController.text,
+          // 'photo': _photoController.text,
+          'avg_speed': avgSpeed,
+          'total_duration': totalDuration.inSeconds,
+          'total_distance': distance,
+        },
+        where: 'route_id = ?',
+        whereArgs: [_currentRouteId],
+      );
+    }
+    await _saveAllLocalDataToSupabase();
+    _nameController.clear();
+    _regionController.clear();
+    _descriptionController.clear();
+    _photoController.clear();
+    setState(() {
+      _navigatorMode = false;
+      _trackingMode = false;
+      _isTrackingPaused = false;
+      _distanceTraveled = 0.0;
+      _userRoutePoints.clear();
+      _localRouteData.clear();
+      _popupOpen = false;
+      _startTime = null;
+      _accumulatedPause = Duration.zero;
+      _pauseStartTime = null;
+      _currentRouteId = null;
+    });
+    await updateNavigatorModeAction(false);
+    await updateTrackingModeAction(false);
+    Navigator.pop(context);
   }
 
   // ───────────────────────────────────────────────
