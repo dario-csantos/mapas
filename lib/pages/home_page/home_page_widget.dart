@@ -158,7 +158,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 autoResumeDelayMinutes: 1,
                                 autoResumeMinDistance: 1.0,
                                 stopSpeedThreshold: 1.0,
-                                socioId: 2248,
+                                socioId: 234234,
                               ),
                             ),
                           ),

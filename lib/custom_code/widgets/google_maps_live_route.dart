@@ -20,6 +20,11 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+// Se quiser usar image_picker
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+
 /// Classe para armazenar cada ponto da rota com velocidade e timestamp
 class _RoutePoint {
   final gmaps.LatLng position;
@@ -122,20 +127,23 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   late TextEditingController _nameController;
   late TextEditingController _regionController;
   late TextEditingController _descriptionController;
-  late TextEditingController _photoController; // novo controller para foto
 
   // Guarda o ID da rota criada no SQLite
   int? _currentRouteId;
 
   // Filtro Rota
-  int? _selectedRouteId = 20;
+  int? _selectedRouteId = 48;
+
+  // NOVO: lista de imagens selecionadas para enviar
+  List<XFile> _pickedImages = [];
+
   void updateShowSavedRoute(int? selectedRouteId) {
     if (selectedRouteId != null) {
       setState(() {
         _selectedRouteId = selectedRouteId;
         _showSavedRoute = true;
       });
-      _loadPolylineSavedRoute(); // Essa função deve usar _selectedRouteId para buscar os pontos.
+      _loadPolylineSavedRoute();
     } else {
       setState(() {
         _showSavedRoute = false;
@@ -149,7 +157,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _nameController = TextEditingController();
     _regionController = TextEditingController();
     _descriptionController = TextEditingController();
-    _photoController = TextEditingController();
     WakelockPlus.enable();
     _currentPosition = _convertLatLng(widget.initialLocation);
     _getInitialPosition();
@@ -166,7 +173,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _nameController.dispose();
     _regionController.dispose();
     _descriptionController.dispose();
-    _photoController.dispose();
     super.dispose();
   }
 
@@ -489,7 +495,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           'name': _nameController.text,
           'region': _regionController.text,
           'description': _descriptionController.text,
-          //'photo': _photoController.text,
           'created_at': now.toIso8601String(),
           'avg_speed': 0.0,
           'total_duration': 0,
@@ -544,19 +549,22 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       final routeData = {
         'socio_id': localRoute['socio_id'],
         'name': localRoute['name'],
-        'region': localRoute['region'],
+        'region': localRoute['region'], // Adicione a região aqui
         'description': localRoute['description'],
         'created_at': localRoute['created_at'],
         'avg_speed': localRoute['avg_speed'],
         'total_duration': localRoute['total_duration'],
         'total_distance': localRoute['total_distance'],
       };
+      // Insere a rota no Supabase
       final routeResponse = await Supabase.instance.client
           .from('routes')
           .insert(routeData)
           .select()
           .single();
       final supabaseRouteId = routeResponse['route_id'];
+
+      // Insere os pontos
       final rowsToInsert = localPoints.map((row) {
         return {
           'route_id': supabaseRouteId,
@@ -575,6 +583,16 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       } else {
         print('Nenhum ponto para salvar.');
       }
+
+      // NOVO: Upload das imagens e salvar no route_imagens
+      if (_pickedImages.isNotEmpty) {
+        await _uploadRouteImages(supabaseRouteId);
+      }
+
+      // Limpeza local, se quiser
+      // await db.delete('route_points', where: 'route_id = ?', whereArgs: [_currentRouteId]);
+      // await db.delete('routes', where: 'route_id = ?', whereArgs: [_currentRouteId]);
+
       _localRouteData.clear();
       _currentRouteId = null;
     } catch (e) {
@@ -796,7 +814,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                     ],
                   ),
                 ),
-                // Campos de texto (Nome, Região, Descrição, Foto)
+                // Campos de texto (Nome, Região, Descrição)
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -807,8 +825,40 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                         _buildTextField("Região", _regionController),
                         const SizedBox(height: 8),
                         _buildTextField("Descrição", _descriptionController),
-                        const SizedBox(height: 8),
-                        _buildTextField("Foto (opcional)", _photoController),
+
+                        // Exemplo de botão para escolher imagens
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            minimumSize: const Size(double.infinity, 48),
+                          ),
+                          onPressed: () async {
+                            await _pickImages();
+                          },
+                          child: const Text(
+                            "Adicionar fotos",
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+
+                        // Exibir as imagens selecionadas (miniaturas)
+                        if (_pickedImages.isNotEmpty)
+                          SizedBox(
+                            height: 100,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _pickedImages.length,
+                              itemBuilder: (context, index) {
+                                final img = _pickedImages[index];
+                                return Container(
+                                  margin: const EdgeInsets.all(5),
+                                  child: Image.file(File(img.path),
+                                      width: 80, height: 80, fit: BoxFit.cover),
+                                );
+                              },
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -852,6 +902,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                               _accumulatedPause = Duration.zero;
                               _pauseStartTime = null;
                               _currentRouteId = null;
+                              _pickedImages.clear();
                             });
                             updateNavigatorModeAction(false);
                             updateTrackingModeAction(false);
@@ -956,7 +1007,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           'name': _nameController.text,
           'region': _regionController.text,
           'description': _descriptionController.text,
-          // 'photo': _photoController.text,
           'avg_speed': avgSpeed,
           'total_duration': totalDuration.inSeconds,
           'total_distance': distance,
@@ -969,7 +1019,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _nameController.clear();
     _regionController.clear();
     _descriptionController.clear();
-    _photoController.clear();
+    _pickedImages.clear(); // limpa as imagens
     setState(() {
       _navigatorMode = false;
       _trackingMode = false;
@@ -986,6 +1036,64 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     await updateNavigatorModeAction(false);
     await updateTrackingModeAction(false);
     Navigator.pop(context);
+  }
+
+  // ───────────────────────────────────────────────
+  // FUNÇÕES PARA FOTOS
+
+  /// Exemplo simples usando image_picker para selecionar várias imagens
+  Future<void> _pickImages() async {
+    final ImagePicker picker = ImagePicker();
+    final List<XFile>? selectedFiles = await picker.pickMultiImage();
+    if (selectedFiles != null) {
+      setState(() {
+        _pickedImages.addAll(selectedFiles);
+      });
+    }
+  }
+
+  /// Função para fazer upload de cada imagem e salvar em `route_imagens`
+  Future<void> _uploadRouteImages(int supabaseRouteId) async {
+    final bucketName = 'imagens';
+    final subfolder = 'img_routes';
+
+    for (final file in _pickedImages) {
+      try {
+        final fileBytes = await File(file.path).readAsBytes();
+        final fileName =
+            "route_${supabaseRouteId}_${DateTime.now().millisecondsSinceEpoch}.jpg";
+
+        // Cria um arquivo temporário
+        final tempDir = await getTemporaryDirectory();
+        final tempFilePath = '${tempDir.path}/$fileName';
+        final tempFile = File(tempFilePath);
+        await tempFile.writeAsBytes(fileBytes);
+
+        // Faz upload usando o arquivo temporário
+        final uploadResponse = await Supabase.instance.client.storage
+            .from(bucketName)
+            .upload('$subfolder/$fileName', tempFile);
+
+        // uploadResponse é uma String, verifique se não é vazia (sucesso)
+        if (uploadResponse == null || uploadResponse.isEmpty) {
+          print("Erro ao fazer upload: resposta vazia");
+          continue;
+        }
+
+        // Construa a URL pública manualmente
+        final publicUrl =
+            "https://cneovsksqcyedzzzrodf.supabase.co/storage/v1/object/public/$bucketName/$subfolder/$fileName";
+
+        // Insira na tabela route_imagens
+        await Supabase.instance.client.from('route_imagens').insert({
+          'route_id': supabaseRouteId,
+          'route_imagem_url': publicUrl,
+        });
+        print("Foto salva em route_imagens: $publicUrl");
+      } catch (e) {
+        print("Erro no upload: $e");
+      }
+    }
   }
 
   // ───────────────────────────────────────────────
