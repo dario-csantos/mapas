@@ -137,6 +137,20 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   // NOVO: lista de imagens selecionadas para enviar
   List<XFile> _pickedImages = [];
 
+  // NOVO: Toggles para os campos *_sn
+  bool _florestaSn = false;
+  bool _costaSn = false;
+  bool _offRoadSn = false;
+  bool _montanhaSn = false;
+  bool _curvasSn = false;
+  bool _rodoviaSn = false;
+  bool _rotaPrivadaSn = false;
+
+  // NOVO: Ratings para diversão, cenário e condição da estrada
+  int _diversaoRating = 0;
+  int _cenarioRating = 0;
+  int _condicaoEstradaRating = 0;
+
   void updateShowSavedRoute(int? selectedRouteId) {
     if (selectedRouteId != null) {
       setState(() {
@@ -410,7 +424,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Container(
-                height: 80,
+                height: 16,
                 alignment: Alignment.center,
                 child: const Text("Pausa automática ativada"),
               ),
@@ -458,7 +472,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Container(
-                  height: 80,
+                  height: 16,
                   alignment: Alignment.center,
                   child: const Text("Tracking retomado automaticamente"),
                 ),
@@ -499,6 +513,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           'avg_speed': 0.0,
           'total_duration': 0,
           'total_distance': 0.0,
+          // Inicializa as flags e notas
+          'floresta_sn': _florestaSn ? '1' : '0',
+          'costa_sn': _costaSn ? '1' : '0',
+          'off_road_sn': _offRoadSn ? '1' : '0',
+          'montanha_sn': _montanhaSn ? '1' : '0',
+          'curvas_sn': _curvasSn ? '1' : '0',
+          'rodovia_sn': _rodoviaSn ? '1' : '0',
+          'rota_privada_sn': _rotaPrivadaSn ? '1' : '0',
+          'diversao': _diversaoRating,
+          'cenario': _cenarioRating,
+          'condicao_estrada': _condicaoEstradaRating,
         });
       }
       _localRouteData.add(_RoutePoint(newPosition, speedKmH, now));
@@ -549,12 +574,24 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       final routeData = {
         'socio_id': localRoute['socio_id'],
         'name': localRoute['name'],
-        'region': localRoute['region'], // Adicione a região aqui
+        'region': localRoute['region'],
         'description': localRoute['description'],
         'created_at': localRoute['created_at'],
         'avg_speed': localRoute['avg_speed'],
         'total_duration': localRoute['total_duration'],
         'total_distance': localRoute['total_distance'],
+        // Converte TEXT "1"/"0" em boolean para o Supabase
+        'floresta_sn': localRoute['floresta_sn'] == '1',
+        'costa_sn': localRoute['costa_sn'] == '1',
+        'off_road_sn': localRoute['off_road_sn'] == '1',
+        'montanha_sn': localRoute['montanha_sn'] == '1',
+        'curvas_sn': localRoute['curvas_sn'] == '1',
+        'rodovia_sn': localRoute['rodovia_sn'] == '1',
+        'rota_privada_sn': localRoute['rota_privada_sn'] == '1',
+        // Notas
+        'diversao': localRoute['diversao'],
+        'cenario': localRoute['cenario'],
+        'condicao_estrada': localRoute['condicao_estrada'],
       };
       // Insere a rota no Supabase
       final routeResponse = await Supabase.instance.client
@@ -584,12 +621,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         print('Nenhum ponto para salvar.');
       }
 
-      // NOVO: Upload das imagens e salvar no route_imagens
+      // Upload das imagens e salvar no route_imagens
       if (_pickedImages.isNotEmpty) {
         await _uploadRouteImages(supabaseRouteId);
       }
 
-      // Limpeza local, se quiser
+      // Limpeza local, se quiser (opcional)
       // await db.delete('route_points', where: 'route_id = ?', whereArgs: [_currentRouteId]);
       // await db.delete('routes', where: 'route_id = ?', whereArgs: [_currentRouteId]);
 
@@ -749,6 +786,8 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _showRoutePreviewPopup();
   }
 
+  // ───────────────────────────────────────────────
+  // CONSTRUÇÃO DA POPUP DE PRÉ-VISUALIZAÇÃO E SALVAR
   void _showRoutePreviewPopup() {
     showDialog(
       context: context,
@@ -793,7 +832,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                 ),
                 // Preview do mapa
                 SizedBox(
-                  height: 180,
+                  height: 150,
                   child: _buildPreviewMap(_userRoutePoints),
                 ),
                 // Linha de métricas
@@ -826,7 +865,52 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                         const SizedBox(height: 8),
                         _buildTextField("Descrição", _descriptionController),
 
-                        // Exemplo de botão para escolher imagens
+                        // NOVO: Ícones/toggles (floresta, costa etc.)
+                        const SizedBox(height: 16),
+                        _buildOptionsRow(),
+
+                        // NOVO: Rating stars
+                        const SizedBox(height: 8),
+                        _buildStarRatingRow("Diversão", _diversaoRating, (val) {
+                          setState(() {
+                            _diversaoRating = val;
+                          });
+                        }),
+                        _buildStarRatingRow("Cenário", _cenarioRating, (val) {
+                          setState(() {
+                            _cenarioRating = val;
+                          });
+                        }),
+                        _buildStarRatingRow("Estrada", _condicaoEstradaRating,
+                            (val) {
+                          setState(() {
+                            _condicaoEstradaRating = val;
+                          });
+                        }),
+
+                        // NOVO: Toggle rota privada
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Rota privada",
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                            Switch(
+                              value: _rotaPrivadaSn,
+                              onChanged: (val) {
+                                setState(() {
+                                  _rotaPrivadaSn = val;
+                                });
+                              },
+                              activeColor: Colors.orange,
+                            ),
+                          ],
+                        ),
+
+                        // Botão para escolher imagens
                         const SizedBox(height: 16),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -903,6 +987,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                               _pauseStartTime = null;
                               _currentRouteId = null;
                               _pickedImages.clear();
+                              // Reseta os toggles e notas
+                              _florestaSn = false;
+                              _costaSn = false;
+                              _offRoadSn = false;
+                              _montanhaSn = false;
+                              _curvasSn = false;
+                              _rodoviaSn = false;
+                              _rotaPrivadaSn = false;
+                              _diversaoRating = 0;
+                              _cenarioRating = 0;
+                              _condicaoEstradaRating = 0;
                             });
                             updateNavigatorModeAction(false);
                             updateTrackingModeAction(false);
@@ -999,6 +1094,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     final totalDuration = _calculateTotalDuration();
     final avgSpeed = _calculateAverageSpeed();
     final distance = _distanceTraveled;
+
     if (_currentRouteId != null) {
       final db = SQLiteManager.instance.database;
       await db.update(
@@ -1010,6 +1106,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           'avg_speed': avgSpeed,
           'total_duration': totalDuration.inSeconds,
           'total_distance': distance,
+          // Atualiza flags e notas
+          'floresta_sn': _florestaSn ? '1' : '0',
+          'costa_sn': _costaSn ? '1' : '0',
+          'off_road_sn': _offRoadSn ? '1' : '0',
+          'montanha_sn': _montanhaSn ? '1' : '0',
+          'curvas_sn': _curvasSn ? '1' : '0',
+          'rodovia_sn': _rodoviaSn ? '1' : '0',
+          'rota_privada_sn': _rotaPrivadaSn ? '1' : '0',
+          'diversao': _diversaoRating,
+          'cenario': _cenarioRating,
+          'condicao_estrada': _condicaoEstradaRating,
         },
         where: 'route_id = ?',
         whereArgs: [_currentRouteId],
@@ -1020,6 +1127,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     _regionController.clear();
     _descriptionController.clear();
     _pickedImages.clear(); // limpa as imagens
+
     setState(() {
       _navigatorMode = false;
       _trackingMode = false;
@@ -1032,6 +1140,18 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _accumulatedPause = Duration.zero;
       _pauseStartTime = null;
       _currentRouteId = null;
+
+      // Reseta os toggles e notas
+      _florestaSn = false;
+      _costaSn = false;
+      _offRoadSn = false;
+      _montanhaSn = false;
+      _curvasSn = false;
+      _rodoviaSn = false;
+      _rotaPrivadaSn = false;
+      _diversaoRating = 0;
+      _cenarioRating = 0;
+      _condicaoEstradaRating = 0;
     });
     await updateNavigatorModeAction(false);
     await updateTrackingModeAction(false);
@@ -1040,8 +1160,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
 
   // ───────────────────────────────────────────────
   // FUNÇÕES PARA FOTOS
-
-  /// Exemplo simples usando image_picker para selecionar várias imagens
   Future<void> _pickImages() async {
     final ImagePicker picker = ImagePicker();
     final List<XFile>? selectedFiles = await picker.pickMultiImage();
@@ -1052,7 +1170,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
   }
 
-  /// Função para fazer upload de cada imagem e salvar em `route_imagens`
   Future<void> _uploadRouteImages(int supabaseRouteId) async {
     final bucketName = 'imagens';
     final subfolder = 'img_routes';
@@ -1074,17 +1191,16 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             .from(bucketName)
             .upload('$subfolder/$fileName', tempFile);
 
-        // uploadResponse é uma String, verifique se não é vazia (sucesso)
         if (uploadResponse == null || uploadResponse.isEmpty) {
           print("Erro ao fazer upload: resposta vazia");
           continue;
         }
 
-        // Construa a URL pública manualmente
+        // Constrói a URL pública manualmente
         final publicUrl =
             "https://cneovsksqcyedzzzrodf.supabase.co/storage/v1/object/public/$bucketName/$subfolder/$fileName";
 
-        // Insira na tabela route_imagens
+        // Insere na tabela route_imagens
         await Supabase.instance.client.from('route_imagens').insert({
           'route_id': supabaseRouteId,
           'route_imagem_url': publicUrl,
@@ -1125,6 +1241,82 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             zoomControlsEnabled: false,
             tiltGesturesEnabled: true,
           ),
+
+          // Botão Rastro usuário
+          Positioned(
+            top: 80,
+            right: 10,
+            child: FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  _showUserRoute = !_showUserRoute;
+                });
+                _updateUserPolyline();
+              },
+              child: Icon(
+                  _showUserRoute ? Icons.timeline : Icons.timeline_outlined),
+              backgroundColor: Colors.blue,
+              tooltip: "Mostrar/Ocultar Minha Rota",
+            ),
+          ),
+
+          // Botão Places
+          Positioned(
+            top: 140,
+            right: 10,
+            child: FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  _showMarkers = !_showMarkers;
+                });
+                if (_showMarkers) {
+                  _loadMarkersFromSupabase();
+                }
+              },
+              child: Icon(
+                _showMarkers
+                    ? Icons.account_balance_outlined
+                    : Icons.account_balance_rounded,
+              ),
+              backgroundColor: Colors.red,
+              tooltip: "Mostrar/Ocultar Marcadores",
+            ),
+          ),
+
+          // Botão Rota salva
+          Positioned(
+            top: 200,
+            right: 10,
+            child: FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  _showSavedRoute = !_showSavedRoute;
+                });
+                _loadPolylineSavedRoute();
+              },
+              child: Icon(_showSavedRoute ? Icons.route : Icons.route_outlined),
+              backgroundColor: Colors.green,
+              tooltip: "Mostrar/Ocultar Rota Salva",
+            ),
+          ),
+
+          // Botão Tráfego
+          Positioned(
+            top: 260,
+            right: 10,
+            child: FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  _showTraffic = !_showTraffic;
+                });
+              },
+              child:
+                  Icon(_showTraffic ? Icons.traffic : Icons.traffic_outlined),
+              backgroundColor: Colors.orange,
+              tooltip: "Mostrar/Ocultar Tráfego",
+            ),
+          ),
+
           Positioned(
             bottom: 230,
             left: 16,
@@ -1174,9 +1366,9 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           ),
           DraggableScrollableSheet(
             controller: _sheetController,
-            initialChildSize: 0.30,
+            initialChildSize: 0.13,
             minChildSize: 0.12,
-            maxChildSize: 0.30,
+            maxChildSize: 0.22,
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
@@ -1363,71 +1555,130 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                                     ),
                           ],
                         ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          FloatingActionButton(
-                            onPressed: () {
-                              setState(() {
-                                _showSavedRoute = !_showSavedRoute;
-                              });
-                              _loadPolylineSavedRoute();
-                            },
-                            child: Icon(_showSavedRoute
-                                ? Icons.route
-                                : Icons.route_outlined),
-                            backgroundColor: Colors.green,
-                            tooltip: "Mostrar/Ocultar Rota Salva",
-                          ),
-                          FloatingActionButton(
-                            onPressed: () {
-                              setState(() {
-                                _showMarkers = !_showMarkers;
-                              });
-                              if (_showMarkers) {
-                                _loadMarkersFromSupabase();
-                              }
-                            },
-                            child: Icon(_showMarkers
-                                ? Icons.location_on
-                                : Icons.location_off),
-                            backgroundColor: Colors.red,
-                            tooltip: "Mostrar/Ocultar Marcadores",
-                          ),
-                          FloatingActionButton(
-                            onPressed: () {
-                              setState(() {
-                                _showUserRoute = !_showUserRoute;
-                              });
-                              _updateUserPolyline();
-                            },
-                            child: Icon(_showUserRoute
-                                ? Icons.timeline
-                                : Icons.timeline_outlined),
-                            backgroundColor: Colors.blue,
-                            tooltip: "Mostrar/Ocultar Minha Rota",
-                          ),
-                          FloatingActionButton(
-                            onPressed: () {
-                              setState(() {
-                                _showTraffic = !_showTraffic;
-                              });
-                            },
-                            child: Icon(_showTraffic
-                                ? Icons.traffic
-                                : Icons.traffic_outlined),
-                            backgroundColor: Colors.orange,
-                            tooltip: "Mostrar/Ocultar Tráfego",
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 5),
                     ],
                   ),
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────
+  // WIDGETS AUXILIARES
+
+  Widget _buildOptionsRow() {
+    // Exemplos de toggles para floresta_sn, costa_sn, etc.
+    // Ajuste os ícones/labels conforme desejar.
+    return Wrap(
+      spacing: 16,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: [
+        _buildToggleIcon(
+            icon: Icons.forest,
+            label: "Floresta",
+            value: _florestaSn,
+            onChanged: (val) {
+              setState(() {
+                _florestaSn = val;
+              });
+            }),
+        _buildToggleIcon(
+            icon: Icons.beach_access,
+            label: "Costa",
+            value: _costaSn,
+            onChanged: (val) {
+              setState(() {
+                _costaSn = val;
+              });
+            }),
+        _buildToggleIcon(
+            icon: Icons.directions_bike,
+            label: "Off-road",
+            value: _offRoadSn,
+            onChanged: (val) {
+              setState(() {
+                _offRoadSn = val;
+              });
+            }),
+        _buildToggleIcon(
+            icon: Icons.terrain,
+            label: "Montanha",
+            value: _montanhaSn,
+            onChanged: (val) {
+              setState(() {
+                _montanhaSn = val;
+              });
+            }),
+        _buildToggleIcon(
+            icon: Icons.roundabout_right,
+            label: "Curvas",
+            value: _curvasSn,
+            onChanged: (val) {
+              setState(() {
+                _curvasSn = val;
+              });
+            }),
+        _buildToggleIcon(
+            icon: Icons.route,
+            label: "Rodovia",
+            value: _rodoviaSn,
+            onChanged: (val) {
+              setState(() {
+                _rodoviaSn = val;
+              });
+            }),
+      ],
+    );
+  }
+
+  Widget _buildToggleIcon({
+    required IconData icon,
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: value ? Colors.orange : Colors.white, size: 32),
+          const SizedBox(height: 4),
+          Text(label,
+              style: TextStyle(
+                  color: value ? Colors.orange : Colors.white, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStarRatingRow(
+      String label, int currentValue, ValueChanged<int> onChanged) {
+    // Simples: clica na estrela e muda o rating
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: const TextStyle(color: Colors.white, fontSize: 16)),
+          Row(
+            children: List.generate(5, (index) {
+              final starIndex = index + 1;
+              return IconButton(
+                onPressed: () => onChanged(starIndex),
+                icon: Icon(
+                  starIndex <= currentValue ? Icons.star : Icons.star_border,
+                  color: Colors.orange,
+                  size: 28,
+                ),
+              );
+            }),
           ),
         ],
       ),
