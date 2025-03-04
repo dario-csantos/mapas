@@ -215,6 +215,8 @@ dynamic deserializeParam<T>(
             return ViewFullPostsRow(data);
           case ViewTotalLike1Row:
             return ViewTotalLike1Row(data);
+          case RouteImagensRow:
+            return RouteImagensRow(data);
           case ImagensRow:
             return ImagensRow(data);
           case ViewPostsGlobal1Row:

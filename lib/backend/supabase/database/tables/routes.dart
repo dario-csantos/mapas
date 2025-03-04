@@ -37,4 +37,7 @@ class RoutesRow extends SupabaseDataRow {
 
   double? get totalDistance => getField<double>('total_distance');
   set totalDistance(double? value) => setField<double>('total_distance', value);
+
+  String? get region => getField<String>('region');
+  set region(String? value) => setField<String>('region', value);
 }

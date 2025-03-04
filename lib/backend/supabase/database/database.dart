@@ -8,6 +8,7 @@ export 'table.dart';
 export 'tables/routes.dart';
 export 'tables/view_full_posts.dart';
 export 'tables/view_total_like_1.dart';
+export 'tables/route_imagens.dart';
 export 'tables/imagens.dart';
 export 'tables/view_posts_global_1.dart';
 export 'tables/view_locations_distinct_ordered.dart';
