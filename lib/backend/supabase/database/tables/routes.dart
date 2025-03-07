@@ -40,4 +40,34 @@ class RoutesRow extends SupabaseDataRow {
 
   String? get region => getField<String>('region');
   set region(String? value) => setField<String>('region', value);
+
+  bool? get florestaSn => getField<bool>('floresta_sn');
+  set florestaSn(bool? value) => setField<bool>('floresta_sn', value);
+
+  bool? get costaSn => getField<bool>('costa_sn');
+  set costaSn(bool? value) => setField<bool>('costa_sn', value);
+
+  bool? get offRoadSn => getField<bool>('off_road_sn');
+  set offRoadSn(bool? value) => setField<bool>('off_road_sn', value);
+
+  bool? get cidadeSn => getField<bool>('cidade_sn');
+  set cidadeSn(bool? value) => setField<bool>('cidade_sn', value);
+
+  bool? get montanhaSn => getField<bool>('montanha_sn');
+  set montanhaSn(bool? value) => setField<bool>('montanha_sn', value);
+
+  bool? get curvasSn => getField<bool>('curvas_sn');
+  set curvasSn(bool? value) => setField<bool>('curvas_sn', value);
+
+  int? get diversao => getField<int>('diversao');
+  set diversao(int? value) => setField<int>('diversao', value);
+
+  int? get cenario => getField<int>('cenario');
+  set cenario(int? value) => setField<int>('cenario', value);
+
+  int? get condicaoEstrada => getField<int>('condicao_estrada');
+  set condicaoEstrada(int? value) => setField<int>('condicao_estrada', value);
+
+  bool? get rotaPrivadaSn => getField<bool>('rota_privada_sn');
+  set rotaPrivadaSn(bool? value) => setField<bool>('rota_privada_sn', value);
 }

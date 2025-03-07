@@ -24,6 +24,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 /// Classe para armazenar cada ponto da rota com velocidade e timestamp
 class _RoutePoint {
@@ -132,7 +133,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   int? _currentRouteId;
 
   // Filtro Rota
-  int? _selectedRouteId = 48;
+  int? _selectedRouteId = 123;
 
   // NOVO: lista de imagens selecionadas para enviar
   List<XFile> _pickedImages = [];
@@ -145,6 +146,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
   bool _curvasSn = false;
   bool _rodoviaSn = false;
   bool _rotaPrivadaSn = false;
+  bool _isSaving = false;
 
   // NOVO: Ratings para diversão, cenário e condição da estrada
   int _diversaoRating = 0;
@@ -316,6 +318,21 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     }
   }
 
+  // ───────────────────────────────────────────────
+  // ATUALIZAÇÃO DA IMAGEM COMPACTADA
+  // Atualização: forçamos a extensão do arquivo comprimido para ".jpg"
+  Future<File?> compressImage(File file) async {
+    final filePath = file.absolute.path;
+    // Substitui a extensão atual por _compressed.jpg independentemente do formato original
+    final outPath = filePath.replaceAll(RegExp(r'\.\w+$'), '_compressed.jpg');
+    var result = await FlutterImageCompress.compressAndGetFile(
+      file.absolute.path,
+      outPath,
+      quality: 30, // ajuste a qualidade conforme necessário (0-100)
+    );
+    return result;
+  }
+
   Future<void> _loadMarkersFromSupabase() async {
     final markers = await _fetchMarkersFromSupabase();
     setState(() {
@@ -405,7 +422,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     });
     final now = DateTime.now();
 
-    // Lógica de auto pausa/retomada (simplificada aqui)
+    // Lógica simplificada de auto pausa/retomada
     if (!_popupOpen && _navigatorMode) {
       if (speedKmH < widget.stopSpeedThreshold) {
         if (_stoppedTimestamp == null) {
@@ -463,7 +480,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               gmaps.CameraUpdate.newCameraPosition(
                 gmaps.CameraPosition(
                   target: newPosition,
-                  zoom: widget.initialZoom,
+                  zoom: _currentZoom,
                   bearing: _currentHeading,
                   tilt: widget.mapTilt,
                 ),
@@ -485,7 +502,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             gmaps.CameraUpdate.newCameraPosition(
               gmaps.CameraPosition(
                 target: newPosition,
-                zoom: widget.initialZoom,
+                zoom: _currentZoom,
                 bearing: _currentHeading,
                 tilt: widget.mapTilt,
               ),
@@ -513,14 +530,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           'avg_speed': 0.0,
           'total_duration': 0,
           'total_distance': 0.0,
-          // Inicializa as flags e notas
-          'floresta_sn': _florestaSn ? '1' : '0',
-          'costa_sn': _costaSn ? '1' : '0',
-          'off_road_sn': _offRoadSn ? '1' : '0',
-          'montanha_sn': _montanhaSn ? '1' : '0',
-          'curvas_sn': _curvasSn ? '1' : '0',
-          'rodovia_sn': _rodoviaSn ? '1' : '0',
-          'rota_privada_sn': _rotaPrivadaSn ? '1' : '0',
+          'floresta_sn': _florestaSn ? "1" : "0",
+          'costa_sn': _costaSn ? "1" : "0",
+          'off_road_sn': _offRoadSn ? "1" : "0",
+          'montanha_sn': _montanhaSn ? "1" : "0",
+          'curvas_sn': _curvasSn ? "1" : "0",
+          'rota_privada_sn': _rotaPrivadaSn ? "1" : "0",
           'diversao': _diversaoRating,
           'cenario': _cenarioRating,
           'condicao_estrada': _condicaoEstradaRating,
@@ -580,15 +595,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
         'avg_speed': localRoute['avg_speed'],
         'total_duration': localRoute['total_duration'],
         'total_distance': localRoute['total_distance'],
-        // Converte TEXT "1"/"0" em boolean para o Supabase
         'floresta_sn': localRoute['floresta_sn'] == '1',
         'costa_sn': localRoute['costa_sn'] == '1',
         'off_road_sn': localRoute['off_road_sn'] == '1',
         'montanha_sn': localRoute['montanha_sn'] == '1',
         'curvas_sn': localRoute['curvas_sn'] == '1',
-        'rodovia_sn': localRoute['rodovia_sn'] == '1',
         'rota_privada_sn': localRoute['rota_privada_sn'] == '1',
-        // Notas
         'diversao': localRoute['diversao'],
         'cenario': localRoute['cenario'],
         'condicao_estrada': localRoute['condicao_estrada'],
@@ -622,13 +634,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       }
 
       // Upload das imagens e salvar no route_imagens
+
       if (_pickedImages.isNotEmpty) {
         await _uploadRouteImages(supabaseRouteId);
       }
 
-      // Limpeza local, se quiser (opcional)
-      // await db.delete('route_points', where: 'route_id = ?', whereArgs: [_currentRouteId]);
-      // await db.delete('routes', where: 'route_id = ?', whereArgs: [_currentRouteId]);
+      // Limpeza local, se desejar
 
       _localRouteData.clear();
       _currentRouteId = null;
@@ -693,11 +704,31 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     return _fetchedMarkers.toSet();
   }
 
+  void _resetTrackingVariables() {
+    _currentPosition = _convertLatLng(widget.initialLocation);
+    _currentSpeed = 0.0;
+    _currentHeading = 0.0;
+    _currentZoom = widget.initialZoom;
+    _distanceTraveled = 0.0;
+    _lastPosition = null;
+    _startTime = null;
+    _accumulatedPause = Duration.zero;
+    _pauseStartTime = null;
+    _localRouteData.clear();
+    _userRoutePoints.clear();
+    _currentRouteId = null;
+  }
+
   // ───────────────────────────────────────────────
   // MODO NAVEGADOR E CONTROLE
   Future<void> _toggleNavigatorMode() async {
     setState(() {
       _navigatorMode = !_navigatorMode;
+
+      if (_navigatorMode) {
+        // Reinicia todas as variáveis de tracking ao iniciar navegação
+        _resetTrackingVariables();
+      }
     });
     await updateNavigatorModeAction(_navigatorMode);
     await updateTrackingModeAction(_navigatorMode);
@@ -792,227 +823,264 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     showDialog(
       context: context,
       builder: (ctx) {
-        return Dialog(
-          alignment: Alignment.topCenter,
-          insetPadding: EdgeInsets.zero,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Container(
-            width: double.infinity,
-            height: MediaQuery.of(context).size.height,
-            color: Colors.black87,
-            child: Column(
-              children: [
-                // Topo com título e botão "SALVE"
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Verifique e salve a rota",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                      GestureDetector(
-                        onTap: () async {
-                          await _saveRoute();
-                        },
-                        child: const Text(
-                          "SALVE",
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+        bool rotaPrivadaLocal = _rotaPrivadaSn;
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              alignment: Alignment.topCenter,
+              insetPadding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Container(
+                width: double.infinity,
+                height: MediaQuery.of(context).size.height,
+                color: Colors.black87,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Verifique e salve a rota",
+                            style: TextStyle(color: Colors.white, fontSize: 16),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Preview do mapa
-                SizedBox(
-                  height: 150,
-                  child: _buildPreviewMap(_userRoutePoints),
-                ),
-                // Linha de métricas
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildMetricItem(
-                          "${_distanceTraveled.toStringAsFixed(1)} km",
-                          Icons.route_outlined),
-                      _buildMetricItem(_formatLiveElapsedTime(), Icons.timer),
-                      _buildMetricItem(
-                          "${_calculateAverageSpeed().toStringAsFixed(1)} km/h",
-                          Icons.speed),
-                      _buildMetricItem("0 m", Icons.terrain),
-                    ],
-                  ),
-                ),
-                // Campos de texto (Nome, Região, Descrição)
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        _buildTextField("Nome da rota", _nameController),
-                        const SizedBox(height: 8),
-                        _buildTextField("Região", _regionController),
-                        const SizedBox(height: 8),
-                        _buildTextField("Descrição", _descriptionController),
-
-                        // NOVO: Ícones/toggles (floresta, costa etc.)
-                        const SizedBox(height: 16),
-                        _buildOptionsRow(),
-
-                        // NOVO: Rating stars
-                        const SizedBox(height: 8),
-                        _buildStarRatingRow("Diversão", _diversaoRating, (val) {
-                          setState(() {
-                            _diversaoRating = val;
-                          });
-                        }),
-                        _buildStarRatingRow("Cenário", _cenarioRating, (val) {
-                          setState(() {
-                            _cenarioRating = val;
-                          });
-                        }),
-                        _buildStarRatingRow("Estrada", _condicaoEstradaRating,
-                            (val) {
-                          setState(() {
-                            _condicaoEstradaRating = val;
-                          });
-                        }),
-
-                        // NOVO: Toggle rota privada
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              "Rota privada",
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 16),
+                          GestureDetector(
+                            onTap: _isSaving
+                                ? null
+                                : () async {
+                                    setState(() {
+                                      _isSaving = true;
+                                    });
+                                    await _saveRoute();
+                                    setState(() {
+                                      _isSaving = false;
+                                    });
+                                  },
+                            child: const Text(
+                              "SALVE",
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            Switch(
-                              value: _rotaPrivadaSn,
-                              onChanged: (val) {
-                                setState(() {
-                                  _rotaPrivadaSn = val;
-                                });
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: 180,
+                              child: AbsorbPointer(
+                                child: _buildPreviewMap(_userRoutePoints),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 16),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  _buildMetricItem(
+                                      "${_distanceTraveled.toStringAsFixed(1)} km",
+                                      Icons.route_outlined),
+                                  _buildMetricItem(
+                                      _formatLiveElapsedTime(), Icons.timer),
+                                  _buildMetricItem(
+                                      "${_calculateAverageSpeed().toStringAsFixed(1)} km/h",
+                                      Icons.speed),
+                                  _buildMetricItem("0 m", Icons.terrain),
+                                ],
+                              ),
+                            ),
+                            _buildTextField("Nome da rota", _nameController),
+                            const SizedBox(height: 8),
+                            _buildTextField("Região", _regionController),
+                            const SizedBox(height: 8),
+                            _buildTextField(
+                                "Descrição", _descriptionController),
+                            const SizedBox(height: 16),
+                            _buildOptionsRow(),
+                            const SizedBox(height: 8),
+                            _buildStarRatingRow("Diversão", _diversaoRating,
+                                (val) {
+                              setState(() {
+                                _diversaoRating = val;
+                              });
+                            }),
+                            _buildStarRatingRow("Cenário", _cenarioRating,
+                                (val) {
+                              setState(() {
+                                _cenarioRating = val;
+                              });
+                            }),
+                            _buildStarRatingRow(
+                                "Estrada", _condicaoEstradaRating, (val) {
+                              setState(() {
+                                _condicaoEstradaRating = val;
+                              });
+                            }),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  "Rota privada",
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 16),
+                                ),
+                                Switch(
+                                  value: rotaPrivadaLocal,
+                                  onChanged: (val) {
+                                    setStateDialog(() {
+                                      rotaPrivadaLocal = val;
+                                    });
+                                    setState(() {
+                                      _rotaPrivadaSn = val;
+                                    });
+                                  },
+                                  activeColor: Colors.orange,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (_pickedImages.isNotEmpty)
+                              SizedBox(
+                                height: 100,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: _pickedImages.length,
+                                  itemBuilder: (context, index) {
+                                    final img = _pickedImages[index];
+                                    return Stack(
+                                      children: [
+                                        Container(
+                                          margin: const EdgeInsets.all(5),
+                                          child: Image.file(
+                                            File(img.path),
+                                            width: 80,
+                                            height: 80,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 0,
+                                          right: 0,
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              setStateDialog(() {
+                                                _pickedImages.removeAt(index);
+                                              });
+                                            },
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.black54,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: const Icon(Icons.close,
+                                                  color: Colors.white,
+                                                  size: 18),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                minimumSize: const Size(double.infinity, 48),
+                              ),
+                              onPressed: () async {
+                                await _pickImages();
+                                setStateDialog(() {});
                               },
-                              activeColor: Colors.orange,
+                              child: const Text(
+                                "Adicionar fotos",
+                                style: TextStyle(fontSize: 16),
+                              ),
                             ),
                           ],
                         ),
-
-                        // Botão para escolher imagens
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            minimumSize: const Size(double.infinity, 48),
-                          ),
-                          onPressed: () async {
-                            await _pickImages();
-                          },
-                          child: const Text(
-                            "Adicionar fotos",
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ),
-
-                        // Exibir as imagens selecionadas (miniaturas)
-                        if (_pickedImages.isNotEmpty)
-                          SizedBox(
-                            height: 100,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _pickedImages.length,
-                              itemBuilder: (context, index) {
-                                final img = _pickedImages[index];
-                                return Container(
-                                  margin: const EdgeInsets.all(5),
-                                  child: Image.file(File(img.path),
-                                      width: 80, height: 80, fit: BoxFit.cover),
-                                );
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                minimumSize: const Size(double.infinity, 48),
+                              ),
+                              onPressed: () async {
+                                await _saveRoute();
                               },
+                              child: const Text("Salvar rota",
+                                  style: TextStyle(fontSize: 16)),
                             ),
                           ),
-                      ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey,
+                                minimumSize: const Size(double.infinity, 48),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _navigatorMode = false;
+                                  _trackingMode = false;
+                                  _isTrackingPaused = false;
+                                  _distanceTraveled = 0.0;
+                                  _userRoutePoints.clear();
+                                  _localRouteData.clear();
+                                  _popupOpen = false;
+                                  _startTime = null;
+                                  _accumulatedPause = Duration.zero;
+                                  _pauseStartTime = null;
+                                  _currentRouteId = null;
+                                  _pickedImages.clear();
+                                  _florestaSn = false;
+                                  _costaSn = false;
+                                  _offRoadSn = false;
+                                  _montanhaSn = false;
+                                  _curvasSn = false;
+                                  _rodoviaSn = false;
+                                  _rotaPrivadaSn = false;
+                                  _diversaoRating = 0;
+                                  _cenarioRating = 0;
+                                  _condicaoEstradaRating = 0;
+                                });
+                                updateNavigatorModeAction(false);
+                                updateTrackingModeAction(false);
+                                Navigator.pop(ctx);
+                              },
+                              child: const Text("Não Salvar",
+                                  style: TextStyle(fontSize: 16)),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                // Linha de botões: Salvar rota e Não Salvar
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            minimumSize: const Size(double.infinity, 48),
-                          ),
-                          onPressed: () async {
-                            await _saveRoute();
-                          },
-                          child: const Text("Salvar rota",
-                              style: TextStyle(fontSize: 16)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey,
-                            minimumSize: const Size(double.infinity, 48),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _navigatorMode = false;
-                              _trackingMode = false;
-                              _isTrackingPaused = false;
-                              _distanceTraveled = 0.0;
-                              _userRoutePoints.clear();
-                              _localRouteData.clear();
-                              _popupOpen = false;
-                              _startTime = null;
-                              _accumulatedPause = Duration.zero;
-                              _pauseStartTime = null;
-                              _currentRouteId = null;
-                              _pickedImages.clear();
-                              // Reseta os toggles e notas
-                              _florestaSn = false;
-                              _costaSn = false;
-                              _offRoadSn = false;
-                              _montanhaSn = false;
-                              _curvasSn = false;
-                              _rodoviaSn = false;
-                              _rotaPrivadaSn = false;
-                              _diversaoRating = 0;
-                              _cenarioRating = 0;
-                              _condicaoEstradaRating = 0;
-                            });
-                            updateNavigatorModeAction(false);
-                            updateTrackingModeAction(false);
-                            Navigator.pop(ctx);
-                          },
-                          child: const Text("Não Salvar",
-                              style: TextStyle(fontSize: 16)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -1095,6 +1163,17 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     final avgSpeed = _calculateAverageSpeed();
     final distance = _distanceTraveled;
 
+    // Mostra o loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+
     if (_currentRouteId != null) {
       final db = SQLiteManager.instance.database;
       await db.update(
@@ -1106,14 +1185,12 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
           'avg_speed': avgSpeed,
           'total_duration': totalDuration.inSeconds,
           'total_distance': distance,
-          // Atualiza flags e notas
-          'floresta_sn': _florestaSn ? '1' : '0',
-          'costa_sn': _costaSn ? '1' : '0',
-          'off_road_sn': _offRoadSn ? '1' : '0',
-          'montanha_sn': _montanhaSn ? '1' : '0',
-          'curvas_sn': _curvasSn ? '1' : '0',
-          'rodovia_sn': _rodoviaSn ? '1' : '0',
-          'rota_privada_sn': _rotaPrivadaSn ? '1' : '0',
+          'floresta_sn': _florestaSn ? "1" : "0",
+          'costa_sn': _costaSn ? "1" : "0",
+          'off_road_sn': _offRoadSn ? "1" : "0",
+          'montanha_sn': _montanhaSn ? "1" : "0",
+          'curvas_sn': _curvasSn ? "1" : "0",
+          'rota_privada_sn': _rotaPrivadaSn ? "1" : "0",
           'diversao': _diversaoRating,
           'cenario': _cenarioRating,
           'condicao_estrada': _condicaoEstradaRating,
@@ -1123,6 +1200,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       );
     }
     await _saveAllLocalDataToSupabase();
+
     _nameController.clear();
     _regionController.clear();
     _descriptionController.clear();
@@ -1140,8 +1218,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       _accumulatedPause = Duration.zero;
       _pauseStartTime = null;
       _currentRouteId = null;
-
-      // Reseta os toggles e notas
       _florestaSn = false;
       _costaSn = false;
       _offRoadSn = false;
@@ -1156,6 +1232,90 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     await updateNavigatorModeAction(false);
     await updateTrackingModeAction(false);
     Navigator.pop(context);
+
+    Navigator.pop(context);
+  }
+
+  // ───────────────────────────────────────────────
+  // NOVA IMPLEMENTAÇÃO: UPLOAD CONCORRENTE DE IMAGENS COM RETRY
+  // Função helper para upload de uma única imagem com retry
+  Future<String?> _uploadSingleImage(String filePath, int supabaseRouteId,
+      {int maxRetries = 3}) async {
+    final bucketName = 'imagens';
+    final subfolder = 'img_routes';
+    int attempt = 0;
+    while (attempt < maxRetries) {
+      try {
+        attempt++;
+        File imageFile = File(filePath);
+        // Tenta comprimir a imagem; se falhar, usa a original
+        File? compressedImage = await compressImage(imageFile);
+        if (compressedImage == null) {
+          compressedImage = imageFile;
+        }
+        final fileBytes = await compressedImage.readAsBytes();
+        final fileName =
+            "route_${supabaseRouteId}_${DateTime.now().millisecondsSinceEpoch}.jpg";
+
+        // Cria um arquivo temporário para o upload
+        final tempDir = await getTemporaryDirectory();
+        final tempFilePath = '${tempDir.path}/$fileName';
+        final tempFile = File(tempFilePath);
+        await tempFile.writeAsBytes(fileBytes);
+
+        // Faz upload usando o arquivo temporário
+        final uploadResponse = await Supabase.instance.client.storage
+            .from(bucketName)
+            .upload('$subfolder/$fileName', tempFile);
+
+        if (uploadResponse == null ||
+            (uploadResponse is String && uploadResponse.isEmpty)) {
+          throw Exception("Upload falhou: resposta vazia");
+        }
+
+        // Constrói a URL pública da imagem (atualize conforme seu projeto)
+        final publicUrl =
+            "https://cneovsksqcyedzzzrodf.supabase.co/storage/v1/object/public/$bucketName/$subfolder/$fileName";
+
+        // Registra a imagem na tabela route_imagens
+        await Supabase.instance.client.from('route_imagens').insert({
+          'route_id': supabaseRouteId,
+          'route_imagem_url': publicUrl,
+        });
+
+        print("Upload bem-sucedido na tentativa $attempt: $publicUrl");
+        return publicUrl;
+      } catch (e) {
+        print("Tentativa $attempt falhou para $filePath: $e");
+        if (attempt >= maxRetries) {
+          return null;
+        }
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    }
+    return null;
+  }
+
+  // Função para processar o upload de todas as imagens selecionadas de forma concorrente
+  Future<String> _uploadRouteImages(int supabaseRouteId) async {
+    if (_pickedImages.isEmpty) return "Nenhuma foto enviada.";
+    List<Future<String?>> uploadFutures = _pickedImages.map((xfile) {
+      return _uploadSingleImage(xfile.path, supabaseRouteId);
+    }).toList();
+
+    List<String?> results = await Future.wait(uploadFutures);
+    List<String> successfulUploads = results.whereType<String>().toList();
+
+    if (successfulUploads.length == _pickedImages.length) {
+      print("Todas as fotos foram enviadas com sucesso!");
+      return "Todas as fotos foram enviadas com sucesso!";
+    } else {
+      String msg =
+          "Algumas fotos não foram enviadas. Sucesso: ${successfulUploads.length} de ${_pickedImages.length}.";
+      print(msg);
+
+      return msg;
+    }
   }
 
   // ───────────────────────────────────────────────
@@ -1167,48 +1327,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
       setState(() {
         _pickedImages.addAll(selectedFiles);
       });
-    }
-  }
-
-  Future<void> _uploadRouteImages(int supabaseRouteId) async {
-    final bucketName = 'imagens';
-    final subfolder = 'img_routes';
-
-    for (final file in _pickedImages) {
-      try {
-        final fileBytes = await File(file.path).readAsBytes();
-        final fileName =
-            "route_${supabaseRouteId}_${DateTime.now().millisecondsSinceEpoch}.jpg";
-
-        // Cria um arquivo temporário
-        final tempDir = await getTemporaryDirectory();
-        final tempFilePath = '${tempDir.path}/$fileName';
-        final tempFile = File(tempFilePath);
-        await tempFile.writeAsBytes(fileBytes);
-
-        // Faz upload usando o arquivo temporário
-        final uploadResponse = await Supabase.instance.client.storage
-            .from(bucketName)
-            .upload('$subfolder/$fileName', tempFile);
-
-        if (uploadResponse == null || uploadResponse.isEmpty) {
-          print("Erro ao fazer upload: resposta vazia");
-          continue;
-        }
-
-        // Constrói a URL pública manualmente
-        final publicUrl =
-            "https://cneovsksqcyedzzzrodf.supabase.co/storage/v1/object/public/$bucketName/$subfolder/$fileName";
-
-        // Insere na tabela route_imagens
-        await Supabase.instance.client.from('route_imagens').insert({
-          'route_id': supabaseRouteId,
-          'route_imagem_url': publicUrl,
-        });
-        print("Foto salva em route_imagens: $publicUrl");
-      } catch (e) {
-        print("Erro no upload: $e");
-      }
     }
   }
 
@@ -1241,8 +1359,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
             zoomControlsEnabled: false,
             tiltGesturesEnabled: true,
           ),
-
-          // Botão Rastro usuário
           Positioned(
             top: 80,
             right: 10,
@@ -1259,8 +1375,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               tooltip: "Mostrar/Ocultar Minha Rota",
             ),
           ),
-
-          // Botão Places
           Positioned(
             top: 140,
             right: 10,
@@ -1282,8 +1396,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               tooltip: "Mostrar/Ocultar Marcadores",
             ),
           ),
-
-          // Botão Rota salva
           Positioned(
             top: 200,
             right: 10,
@@ -1299,8 +1411,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               tooltip: "Mostrar/Ocultar Rota Salva",
             ),
           ),
-
-          // Botão Tráfego
           Positioned(
             top: 260,
             right: 10,
@@ -1316,7 +1426,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
               tooltip: "Mostrar/Ocultar Tráfego",
             ),
           ),
-
           Positioned(
             bottom: 230,
             left: 16,
@@ -1567,12 +1676,7 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
     );
   }
 
-  // ───────────────────────────────────────────────
-  // WIDGETS AUXILIARES
-
   Widget _buildOptionsRow() {
-    // Exemplos de toggles para floresta_sn, costa_sn, etc.
-    // Ajuste os ícones/labels conforme desejar.
     return Wrap(
       spacing: 16,
       runSpacing: 8,
@@ -1623,15 +1727,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
                 _curvasSn = val;
               });
             }),
-        _buildToggleIcon(
-            icon: Icons.route,
-            label: "Rodovia",
-            value: _rodoviaSn,
-            onChanged: (val) {
-              setState(() {
-                _rodoviaSn = val;
-              });
-            }),
       ],
     );
   }
@@ -1659,7 +1754,6 @@ class _GoogleMapsLiveRouteState extends State<GoogleMapsLiveRoute> {
 
   Widget _buildStarRatingRow(
       String label, int currentValue, ValueChanged<int> onChanged) {
-    // Simples: clica na estrela e muda o rating
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
